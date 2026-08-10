@@ -151,7 +151,7 @@ function renderSwimageHTML(src, ind) {
     // навмисно, щоб перемикання не «стрибало» по розміру.
     const imgCls = ['block', w, align, radius, shadow, fit].filter(Boolean).join(' ');
     const idAttr = swId ? ` id="${esc(swId)}" data-sw-image="${esc(swId)}"` : '';
-    inner += `${ind}<img src="${esc(url)}" alt="${esc(alt)}" class="${imgCls}"${idAttr}>\n`;
+    inner += `${ind}<img src="${esc(url)}" alt="${esc(alt)}" class="${imgCls}"${idAttr}${styleAttr(IMG_BASE_STYLE)}>\n`;
   }
 
   return inner;

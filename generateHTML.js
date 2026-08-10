@@ -82,7 +82,7 @@ function generateHTML() {
       if (minHDsk) cls += ` md:min-h-[${minHDsk.replace(/\s/g,'_')}]`;
       const style = styleParts.length ? ` style="${styleParts.join(';')}"` : '';
       out += `<div class="${cls}"${style}>\n`;
-      out += `  <img src="${esc(bgImage)}" alt="" class="absolute inset-0 w-full h-full" style="object-fit:${bgSize==='contain'?'contain':'cover'};object-position:${bgPos}" aria-hidden="true">\n`;
+      out += `  <img src="${esc(bgImage)}" alt="" class="absolute inset-0 w-full h-full"${styleAttr(IMG_BASE_STYLE, `object-fit:${bgSize==='contain'?'contain':'cover'}`, `object-position:${bgPos}`)} aria-hidden="true">\n`;
       cols.forEach((col, i) => {
         const span  = lay.outSpans[i] || '';
         const cvMob = col.dataset.cvMob || 'justify-start';
@@ -100,7 +100,7 @@ function generateHTML() {
       if (bgColor) styleParts.push(`background-color:${esc(bgColor)}`);
       const style = styleParts.length ? ` style="${styleParts.join(';')}"` : '';
       out += `<div class="relative overflow-hidden"${style}>\n`;
-      out += `  <img src="${esc(bgImage)}" alt="" class="w-full block"${bgPos !== 'center' ? ` style="object-position:${bgPos}"`:''} aria-hidden="true">\n`;
+      out += `  <img src="${esc(bgImage)}" alt="" class="w-full block"${styleAttr(IMG_BASE_STYLE, bgPos !== 'center' ? `object-position:${bgPos}` : '')} aria-hidden="true">\n`;
       // Grid overlay — absolute, fills container
       out += `  <div class="absolute inset-0 ${baseCls}">\n`;
       cols.forEach((col, i) => {

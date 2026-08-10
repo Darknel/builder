@@ -41,6 +41,11 @@ function addTemplateTextLine(block, listSelector, text, opts = {}) {
       node.querySelectorAll(`.${cls}`).forEach(b => b.classList.toggle('is-on', b.dataset.val === opts.align));
     });
   }
+  if (opts.colorCls) {
+    node.querySelectorAll('.tl-clr-btn').forEach(b => b.classList.toggle('is-on', b.dataset.cls === opts.colorCls));
+    const hidden = node.querySelector('.tl-clr-cls');
+    if (hidden) hidden.value = opts.colorCls;
+  }
   list.appendChild(node);
 }
 

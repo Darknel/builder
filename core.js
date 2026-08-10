@@ -46,6 +46,49 @@ function esc(s) {
   return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+/* ─── Helper: style attribute ────────────────────
+   Об'єднує декілька CSS-декларацій в один атрибут style="…",
+   пропускаючи порожні. Використовується там, де на елемент
+   потрібно накласти inline-стиль поверх Tailwind-класів —
+   напр. коли цільовий сайт має власний хардкоджений CSS, який
+   клас не завжди здатен перебити (нижчий пріоритет/специфічність). */
+function styleAttr(...parts) {
+  const merged = parts.filter(Boolean).join(';');
+  return merged ? ` style="${merged}"` : '';
+}
+
+// Усі <img> в експорті отримують це базове inline-правило: цільовий
+// сайт підставляє власні стилі, які іноді додають margin навколо
+// зображень — обнуляємо його напряму в тегу, щоб клас на боці сайту
+// не міг це перебити.
+const IMG_BASE_STYLE = 'margin-block:0';
+
+/* ─── Палітра кольорів тексту ─────────────────────
+   Спільна для textElement.js (будує кнопки вибору кольору) і
+   textLinesToHTML() нижче (для h3 інлайнить color:, бо цільовий
+   сайт хардкодить чорний колір заголовків h3, і сам лише Tailwind-
+   клас типу text-white його не перебиває). */
+const TEXT_COLOR_PALETTE = [
+  {cls:'',                    hex:'transparent', label:'За замовч.', border:true},
+  {cls:'text-black',          hex:'#000000', label:'Чорний'},
+  {cls:'text-neutral-900',    hex:'#171717', label:'Нейтр. 900'},
+  {cls:'text-neutral-800',    hex:'#262626', label:'Нейтр. 800'},
+  {cls:'text-zhuk-dark-gray', hex:'#222222', label:'Dark gray'},
+  {cls:'text-gray-600',       hex:'#666666', label:'Gray 600'},
+  {cls:'text-zhuk-gray',      hex:'#96979A', label:'Zhuk gray'},
+  {cls:'text-gray-400',       hex:'#BDBDBD', label:'Gray 400'},
+  {cls:'text-white',          hex:'#FFFFFF', label:'Білий',   border:true},
+  {cls:'text-brand',          hex:'var(--brand-color,#2563eb)', label:'Brand'},
+  {cls:'text-brand-dark',     hex:'var(--brand-color,#1d4ed8)', label:'Brand dark'},
+  {cls:'text-red-600',        hex:'#D31A1F', label:'Red 600'},
+  {cls:'text-red-700',        hex:'#E00B0B', label:'Red 700'},
+  {cls:'text-zhuk-red',       hex:'#d23434', label:'Zhuk red'},
+  {cls:'text-orange-500',     hex:'#FA871D', label:'Orange'},
+  {cls:'text-zhuk-yellow',    hex:'#FDBB2F', label:'Yellow'},
+  {cls:'text-green-500',      hex:'#5DB075', label:'Green 500'},
+  {cls:'text-green-600',      hex:'#4B9460', label:'Green 600'},
+];
+
 /* ─── Helper: debounce ───────────────────────── */
 // Затримує виклик fn, поки викликається повторно — виконується лише
 // після того, як минуло `wait` мс без нових викликів.
@@ -159,7 +202,16 @@ function textLinesToHTML(listEl, indent) {
     const clrCls = line.querySelector('.tl-clr-cls')?.value?.trim() || '';
 
     const cls = ['w-full', 'break-words', sizeCls, font, weight, alignCls, italic, underl, strike, lh, ls, mb, clrCls].filter(Boolean).join(' ');
-    out += `${indent}<${tag} class="${cls}">${esc(text)}</${tag}>\n`;
+
+    // Цільовий сайт хардкодить чорний колір для <h3> в CSS, тож сам
+    // клас кольору (напр. text-white) може не перебити його. Для h3
+    // з обраним кольором дублюємо колір інлайново — це вже точно
+    // переважає будь-який зовнішній CSS-клас.
+    const clrEntry = TEXT_COLOR_PALETTE.find(c => c.cls === clrCls);
+    const colorHex = clrEntry && clrEntry.hex && clrEntry.hex !== 'transparent' ? clrEntry.hex : '';
+    const style = tag === 'h3' ? styleAttr(colorHex ? `color:${colorHex}` : '') : '';
+
+    out += `${indent}<${tag} class="${cls}"${style}>${esc(text)}</${tag}>\n`;
   });
   return out;
 }
@@ -213,11 +265,16 @@ function renderSwimageStack(group) {
       .filter(Boolean).join(' ');
     const visCls = idx === 0 ? '' : ' opacity-0';
 
-    const patched = html
+    let patched = html
       // Strip the original size-related classes (w-full/h-auto/block/object-*/mx-auto/ml-auto/rounded-*/shadow-*)
       // and replace the whole class attribute with the unified stack classes.
-      .replace(/(<img\b[^>]*?)\bclass="[^"]*"/, `$1class="${baseCls}${visCls}"`)
-      .replace(/(<img\b[^>]*?)>/, `$1 style="transition-duration:500ms">`);
+      .replace(/(<img\b[^>]*?)\bclass="[^"]*"/, `$1class="${baseCls}${visCls}"`);
+    // img вже має style="margin-block:0" (з renderSwimageHTML) — дописуємо
+    // transition-duration в ЦЕЙ САМИЙ атрибут, а не додаємо другий style="",
+    // інакше вийде невалідний HTML з двома style на одному тезі.
+    patched = /<img\b[^>]*\bstyle="/.test(patched)
+      ? patched.replace(/(<img\b[^>]*\bstyle=")([^"]*)(")/, (m, pre, styleContent, post) => `${pre}${styleContent};transition-duration:500ms${post}`)
+      : patched.replace(/(<img\b[^>]*?)>/, `$1 style="transition-duration:500ms">`);
     out += patched;
   });
   out += '  </div>\n';

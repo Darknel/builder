@@ -164,26 +164,7 @@ function makeTextLine(bid) {
       <div class="tli-ctrl-row" style="flex-wrap:wrap;gap:4px;">
         <span style="font-size:11px;color:var(--t3);font-weight:600;width:100%;margin-bottom:2px;">Колір тексту:</span>
         <div class="tl-clr-palette" style="display:flex;flex-wrap:wrap;gap:3px;">
-          ${[
-            {cls:'',           hex:'transparent', label:'За замовч.',  border:true},
-            {cls:'text-black',         hex:'#000000', label:'Чорний'},
-            {cls:'text-neutral-900',   hex:'#171717', label:'Нейтр. 900'},
-            {cls:'text-neutral-800',   hex:'#262626', label:'Нейтр. 800'},
-            {cls:'text-zhuk-dark-gray',hex:'#222222', label:'Dark gray'},
-            {cls:'text-gray-600',      hex:'#666666', label:'Gray 600'},
-            {cls:'text-zhuk-gray',     hex:'#96979A', label:'Zhuk gray'},
-            {cls:'text-gray-400',      hex:'#BDBDBD', label:'Gray 400'},
-            {cls:'text-white',         hex:'#FFFFFF', label:'Білий',    border:true},
-            {cls:'text-brand',         hex:'var(--brand-color,#2563eb)', label:'Brand'},
-            {cls:'text-brand-dark',    hex:'var(--brand-color,#1d4ed8)', label:'Brand dark'},
-            {cls:'text-red-600',       hex:'#D31A1F', label:'Red 600'},
-            {cls:'text-red-700',       hex:'#E00B0B', label:'Red 700'},
-            {cls:'text-zhuk-red',      hex:'#d23434', label:'Zhuk red'},
-            {cls:'text-orange-500',    hex:'#FA871D', label:'Orange'},
-            {cls:'text-zhuk-yellow',   hex:'#FDBB2F', label:'Yellow'},
-            {cls:'text-green-500',     hex:'#5DB075', label:'Green 500'},
-            {cls:'text-green-600',     hex:'#4B9460', label:'Green 600'},
-          ].map(({cls, hex, label, border}) =>
+          ${TEXT_COLOR_PALETTE.map(({cls, hex, label, border}) =>
             `<button type="button" class="tl-clr-btn${cls===''?' is-on':''}" data-cls="${cls}"
               title="${label}${cls ? ' ('+cls+')' : ' (default)'}"
               data-action="tl-color"

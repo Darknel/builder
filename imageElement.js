@@ -227,14 +227,14 @@ function renderImageHTML(src, bid, ind) {
       // блоку (за своїм натуральним співвідношенням сторін), а текстовий
       // шар накладається зверху абсолютно на всю площу зображення.
       inner += `${ind}<div class="relative overflow-hidden ${radius}">\n`;
-      inner += `${ind}  <img src="${esc(url)}" alt="${esc(alt)}" class="block w-full h-auto">\n`;
+      inner += `${ind}  <img src="${esc(url)}" alt="${esc(alt)}" class="block w-full h-auto"${styleAttr(IMG_BASE_STYLE)}>\n`;
       inner += `${ind}  <div class="absolute inset-0 ${ovlay} flex flex-col ${ovPos} ${pad}">\n`;
       inner += ovHTML;
       inner += `${ind}  </div>\n${ind}</div>\n`;
     } else {
       // Фіксована висота: зображення абсолютне на всю площу з обрізкою (cover)
       inner += `${ind}<div class="relative overflow-hidden ${ovH} ${radius}">\n`;
-      inner += `${ind}  <img src="${esc(url)}" alt="${esc(alt)}" class="absolute inset-0 w-full h-full object-cover">\n`;
+      inner += `${ind}  <img src="${esc(url)}" alt="${esc(alt)}" class="absolute inset-0 w-full h-full object-cover"${styleAttr(IMG_BASE_STYLE)}>\n`;
       inner += `${ind}  <div class="absolute inset-0 ${ovlay} flex flex-col ${ovPos} ${pad}">\n`;
       inner += ovHTML;
       inner += `${ind}  </div>\n${ind}</div>\n`;
@@ -243,7 +243,7 @@ function renderImageHTML(src, bid, ind) {
     // Клас ширини (w) вже містить потрібні max-w-full/h-auto (або їх
     // відсутність для "оригінального розміру") окремо для mob/dsk.
     const imgCls = ['block', w, align, radius, shadow].filter(Boolean).join(' ');
-    inner += `${ind}<img src="${esc(url)}" alt="${esc(alt)}" class="${imgCls}">\n`;
+    inner += `${ind}<img src="${esc(url)}" alt="${esc(alt)}" class="${imgCls}"${styleAttr(IMG_BASE_STYLE)}>\n`;
   }
 
   const capHTML = textLinesToHTML(src.querySelector('.img-cap-list'), ind + '  ');

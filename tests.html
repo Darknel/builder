@@ -223,6 +223,29 @@
     assertNotIncludes(panelHtml, '"><img src=x onerror=alert(1)>', 'значення поля не має вириватись із value=""');
   });
 
+  /* ─── swimage crossfade-стек: style мерджиться, а не дублюється ── */
+  test('renderSwimageStack() мерджить style (margin-block:0 + transition-duration), без двох style=""', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    const col = rw.querySelector('.col');
+    const a = addBlockSilently('swimage', col);
+    setField(a, '.img-url', 'https://example.com/a.jpg');
+    setField(a, '.sw-id', 'img-a');
+    const b = addBlockSilently('swimage', col);
+    setField(b, '.img-url', 'https://example.com/b.jpg');
+    setField(b, '.sw-id', 'img-b');
+    const html = generateHTML();
+    assertIncludes(html, 'sw-stack', 'два послідовних swimage мали згрупуватись у sw-stack');
+    const imgTags = html.match(/<img\b[^>]*>/g) || [];
+    assert(imgTags.length === 2, `очікували 2 <img> у стеку, знайшли ${imgTags.length}`);
+    imgTags.forEach(tag => {
+      const styleMatches = tag.match(/\bstyle="/g) || [];
+      assert(styleMatches.length === 1, `тег має містити рівно один style="": ${tag}`);
+      assertIncludes(tag, 'margin-block:0', `стек-img без margin-block:0: ${tag}`);
+      assertIncludes(tag, 'transition-duration:500ms', `стек-img без transition-duration: ${tag}`);
+    });
+  });
+
   /* ─── Video MIME regression ──────────────────── */
   test('renderVideoHTML() підбирає правильний MIME для .webm', () => {
     clearCanvas();
@@ -233,6 +256,67 @@
     const html = generateHTML();
     assertIncludes(html, 'type="video/webm"', 'очікували video/webm для .webm файлу');
     assertNotIncludes(html, 'type="video/mp4"', 'не повинно залишитись хардкоджене video/mp4');
+  });
+
+  /* ─── margin-block:0 на кожному <img> ─────────── */
+  test('Кожен <img> в експорті має style з margin-block:0', () => {
+    clearCanvas();
+    const rw = addRow('1,1');
+    const cols = rw.querySelectorAll('.col');
+    const img = addBlockSilently('image', cols[0]);
+    setField(img, '.img-url', 'https://example.com/a.jpg');
+    const swimg = addBlockSilently('swimage', cols[1]);
+    setField(swimg, '.img-url', 'https://example.com/b.jpg');
+    setField(swimg, '.sw-id', 'img-x');
+    const html = generateHTML();
+    const imgTags = html.match(/<img\b[^>]*>/g) || [];
+    assert(imgTags.length >= 2, `очікували щонайменше 2 <img>, знайшли ${imgTags.length}`);
+    imgTags.forEach(tag => assert(/style="[^"]*margin-block:0/.test(tag), `<img> без margin-block:0: ${tag}`));
+  });
+
+  test('Фонове зображення рядка (overlay/natural) теж має margin-block:0', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    rw.dataset.bgImage = 'https://example.com/bg.jpg';
+    rw.dataset.bgMode = 'overlay';
+    let html = generateHTML();
+    assertIncludes(html, 'margin-block:0', 'overlay-фон без margin-block:0');
+    rw.dataset.bgMode = 'natural';
+    html = generateHTML();
+    assertIncludes(html, 'margin-block:0', 'natural-фон без margin-block:0');
+  });
+
+  /* ─── h3 + text-white → інлайновий color (перебиває хардкод сайту) ── */
+  test('h3 з кольором text-white отримує style="color:#FFFFFF"', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    const col = rw.querySelector('.col');
+    const block = addBlockSilently('text', col);
+    addTemplateTextLine(block, '.tl-list', 'Білий заголовок', { tag: 'h3', colorCls: 'text-white' });
+    const html = generateHTML();
+    assertIncludes(html, '<h3', 'очікували тег h3');
+    assertIncludes(html, 'style="color:#FFFFFF"', 'h3 з text-white мав отримати інлайновий color');
+  });
+
+  test('h3 без обраного кольору не отримує зайвого style', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    const col = rw.querySelector('.col');
+    const block = addBlockSilently('text', col);
+    addTemplateTextLine(block, '.tl-list', 'Звичайний заголовок', { tag: 'h3' });
+    const html = generateHTML();
+    assertNotIncludes(html, 'style="color:', 'без обраного кольору style="color:" не має з’являтись');
+  });
+
+  test('<p> з кольором НЕ отримує інлайновий color (лише h3 хардкодиться на сайті)', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    const col = rw.querySelector('.col');
+    const block = addBlockSilently('text', col);
+    addTemplateTextLine(block, '.tl-list', 'Білий параграф', { tag: 'p', colorCls: 'text-white' });
+    const html = generateHTML();
+    assertIncludes(html, 'text-white', 'клас кольору має бути присутній');
+    assertNotIncludes(html, 'style="color:', 'для <p> інлайновий color не потрібен');
   });
 
   /* ─── Undo/redo базовий цикл ──────────────────── */

@@ -11,6 +11,12 @@
 <body>
 <div class="app">
 
+  <!-- ══ TAB BAR (сторінки, як вкладки в браузері) ═ -->
+  <div class="tab-bar" id="tab-bar">
+    <div class="tab-bar-list" id="tab-bar-list"></div>
+    <button class="tab-bar-add" id="btn-add-tab" title="Нова вкладка (сторінка)">+</button>
+  </div>
+
   <!-- ══ HEADER ════════════════════════════════ -->
   <header class="header">
     <a href="#" class="logo">
@@ -217,6 +223,8 @@
   delegate.js       — делеговані обробники подій (заміна inline onclick/oninput)
   sectionLibrary.js      — бібліотека готових секцій
   projectState.js    — автозбереження, експорт/імпорт проєкту, undo/redo
+  pageTabs.js        — вкладки-сторінки (перемикання/дублювання/закриття/
+                       перейменування, переміщення рядка на іншу вкладку)
   clearButton.js    — кнопка "Очистити"
   copyCode.js       — кнопка "Скопіювати HTML"
   translation.js    — переклад тексту на російську через AI
@@ -239,6 +247,7 @@
 <script src="delegate.js"></script>
 <script src="sectionLibrary.js"></script>
 <script src="projectState.js"></script>
+<script src="pageTabs.js"></script>
 <script src="clearButton.js"></script>
 <script src="copyCode.js"></script>
 <script src="translation.js"></script>

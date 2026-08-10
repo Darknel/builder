@@ -67,6 +67,11 @@ const ACTIONS = {
     if (file) handleRowBgFile(file);
     el.value = '';
   },
+
+  /* ─── вкладки-сторінки (pageTabs.js) ──────────── */
+  'tab-switch'(el)     { switchToTab(el.dataset.tabId); },
+  'tab-duplicate'(el)  { duplicateTab(el.dataset.tabId); },
+  'tab-close'(el)      { closeTab(el.dataset.tabId); },
 };
 
 function runAction(el, evt) {

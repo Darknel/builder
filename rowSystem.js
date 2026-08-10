@@ -85,6 +85,7 @@ function bindRowBar(rw) {
     if (action === 'up')   moveRow(rw, -1);
     if (action === 'down') moveRow(rw, 1);
     if (action === 'dup')  dupRow(rw);
+    if (action === 'move') openMoveMenu(e.target.closest('[data-action="move"]'), rw);
     if (action === 'del')  removeRow(rw);
   });
 }
@@ -116,6 +117,7 @@ function addRow(key) {
       <button class="ib" data-action="up"  title="Вгору">↑</button>
       <button class="ib" data-action="down" title="Вниз">↓</button>
       <button class="ib" data-action="dup" title="Копіювати контейнер">⧉</button>
+      <button class="ib" data-action="move" title="Перемістити на іншу вкладку">→</button>
       <button class="ib danger" data-action="del" title="Видалити контейнер">✕</button>
     </div>`;
 

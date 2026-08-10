@@ -46,6 +46,26 @@ html, body { height: 100%; overflow: hidden; font-family: 'Geist', -apple-system
 /* ── Layout ─────────────────────────────────── */
 .app { display: flex; flex-direction: column; height: 100vh; }
 
+/* ── Page tabs (як вкладки в браузері) ──────── */
+.tab-bar { height: 34px; background: var(--surface3); border-bottom: 1px solid var(--line); display: flex; align-items: flex-end; gap: 4px; padding: 4px 8px 0; flex-shrink: 0; z-index: 210; }
+.tab-bar-list { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; }
+.page-tab { display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 6px 0 10px; border-radius: 6px 6px 0 0; background: var(--surface2); color: var(--t3); font-size: 12px; font-weight: 500; cursor: pointer; max-width: 180px; min-width: 88px; border: 1px solid var(--line); border-bottom: none; transition: background var(--fast) var(--ease), color var(--fast) var(--ease); flex-shrink: 0; }
+.page-tab:hover { background: var(--surface); color: var(--t2); }
+.page-tab.is-active { background: var(--surface); color: var(--t1); font-weight: 600; box-shadow: var(--shadow-sm); }
+.page-tab.is-drop-target { outline: 2px solid var(--blue); outline-offset: -2px; background: var(--blue-bg); color: var(--blue); }
+.page-tab-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.page-tab-dup, .page-tab-close { width: 18px; height: 18px; border-radius: 4px; border: none; background: transparent; color: var(--t4); font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit; }
+.page-tab-dup:hover { background: var(--blue-dim); color: var(--blue); }
+.page-tab-close:hover { background: var(--red-bg); color: var(--red); }
+.tab-bar-add { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--t3); font-size: 15px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-bottom: 4px; font-family: inherit; }
+.tab-bar-add:hover { background: var(--surface2); color: var(--t1); border-color: var(--line2); }
+
+/* ── "Перемістити на вкладку" — спливаюче меню ── */
+.move-menu { position: fixed; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); padding: 6px; z-index: 500; min-width: 170px; max-height: 260px; overflow-y: auto; }
+.move-menu-title { font-size: 10px; font-weight: 700; color: var(--t4); text-transform: uppercase; letter-spacing: .3px; padding: 2px 8px 6px; }
+.move-menu-item { display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 4px; border: none; background: transparent; color: var(--t2); font-size: 12px; cursor: pointer; font-family: inherit; }
+.move-menu-item:hover { background: var(--blue-bg); color: var(--blue); }
+
 /* ── Header ─────────────────────────────────── */
 .header { height: var(--header-h); background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 16px; gap: 8px; flex-shrink: 0; z-index: 200; }
 .logo { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--t1); letter-spacing: -.3px; text-decoration: none; margin-right: 4px; }

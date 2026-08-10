@@ -34,6 +34,10 @@
      а не мокаємо DOM вручну.
 ═════════════════════════════════════════════════════════════════ -->
 <div class="app">
+  <div class="tab-bar" id="tab-bar">
+    <div class="tab-bar-list" id="tab-bar-list"></div>
+    <button class="tab-bar-add" id="btn-add-tab">+</button>
+  </div>
   <header class="header">
     <a href="#" class="logo"><div class="logo-icon">B</div>Builder</a>
     <button class="hbtn ghost" id="btn-undo" disabled>↶</button>
@@ -128,6 +132,7 @@
 <script src="delegate.js"></script>
 <script src="sectionLibrary.js"></script>
 <script src="projectState.js"></script>
+<script src="pageTabs.js"></script>
 <script src="clearButton.js"></script>
 <script src="copyCode.js"></script>
 <script src="translation.js"></script>
@@ -453,6 +458,145 @@
     assert(document.querySelectorAll('#canvas .row').length === 1, 'усе мало бути в ОДНІЙ колонці одного рядка');
   });
 
+  /* ─── Вкладки-сторінки (pageTabs.js) ──────────── */
+  test('addNewTab() додає порожню вкладку і перемикається на неї', () => {
+    clearCanvas();
+    const before = tabs.length;
+    const prevActive = activeTabId;
+    addNewTab();
+    assert(tabs.length === before + 1, `очікували ${before + 1} вкладок, отримали ${tabs.length}`);
+    assert(activeTabId !== prevActive, 'мали перемкнутись на нову вкладку');
+    assert(document.querySelectorAll('#canvas .row').length === 0, 'нова вкладка мала бути порожньою');
+  });
+
+  test('switchToTab() зберігає вміст вихідної вкладки і відновлює цільову', () => {
+    clearCanvas();
+    const tabA = activeTabId;
+    addRow('1');
+    const blockA = addBlockSilently('text', document.querySelector('#canvas .col'));
+    addTemplateTextLine(blockA, '.tl-list', 'Контент вкладки A');
+
+    addNewTab();
+    const tabB = activeTabId;
+    addRow('1,1');
+    assert(tabA !== tabB, 'мали отримати різні id вкладок');
+
+    switchToTab(tabA);
+    assert(activeTabId === tabA, 'мали перемкнутись назад на A');
+    assertIncludes(generateHTML(), 'Контент вкладки A', 'вміст вкладки A мав зберегтись при перемиканні');
+
+    switchToTab(tabB);
+    assert(activeTabId === tabB, 'мали перемкнутись на B');
+    assert(document.querySelectorAll('#canvas .row .col').length === 2, 'вкладка B мала зберегти свою розмітку (1,1 = 2 колонки)');
+  });
+
+  test('duplicateTab() створює копію з тим самим вмістом і перемикається на неї', () => {
+    clearCanvas();
+    const block = addBlockSilently('text', addRow('1').querySelector('.col'));
+    addTemplateTextLine(block, '.tl-list', 'Контент для дублювання');
+    const srcId = activeTabId;
+    const before = tabs.length;
+
+    duplicateTab(srcId);
+    assert(tabs.length === before + 1, `очікували ${before + 1} вкладок, отримали ${tabs.length}`);
+    assert(activeTabId !== srcId, 'duplicateTab() мав перемкнути на щойно створену копію');
+    assertIncludes(generateHTML(), 'Контент для дублювання', 'копія мала успадкувати вміст оригіналу');
+  });
+
+  test('closeTab() не дає закрити останню вкладку', () => {
+    while (tabs.length > 1) closeTab(tabs[tabs.length - 1].id);
+    const lastId = tabs[0].id;
+    closeTab(lastId);
+    assert(tabs.length === 1, 'остання вкладка не мала закритись');
+    assert(tabs[0].id === lastId, 'остання вкладка мала лишитись тією самою');
+  });
+
+  test('closeTab() активної вкладки перемикає на сусідню', () => {
+    clearCanvas();
+    const closingId = activeTabId;
+    addNewTab();
+    const survivorId = activeTabId;
+    switchToTab(closingId);
+    closeTab(closingId);
+    assert(!tabs.find(t => t.id === closingId), 'закрита вкладка не мала лишитись у масиві tabs');
+    assert(activeTabId === survivorId, 'мали автоматично перемкнутись на вцілілу вкладку');
+  });
+
+  test('renameTab() змінює назву вкладки', () => {
+    const id = activeTabId;
+    const originalPrompt = window.prompt;
+    window.prompt = () => 'Нова назва';
+    renameTab(id);
+    window.prompt = originalPrompt;
+    assert(tabs.find(t => t.id === id).title === 'Нова назва', 'назва вкладки мала змінитись на введену');
+  });
+
+  test('moveRowToTab() переносить рядок на іншу вкладку і прибирає його з поточної', () => {
+    clearCanvas();
+    const block = addBlockSilently('text', addRow('1').querySelector('.col'));
+    addTemplateTextLine(block, '.tl-list', 'Рядок для переносу');
+    const srcId = activeTabId;
+
+    addNewTab();
+    const targetId = activeTabId;
+    switchToTab(srcId);
+    // rehydrateCanvas() (всередині switchToTab) перестворює DOM-вузли рядків
+    // наново — тому елемент .row треба брати ПІСЛЯ перемикання назад, а не
+    // до (стара посилання на вузол інакше "відв'язане" від живого canvas).
+    const rw = document.querySelector('#canvas .row');
+
+    const rowsBefore = document.querySelectorAll('#canvas .row').length;
+    moveRowToTab(rw, targetId);
+    assert(document.querySelectorAll('#canvas .row').length === rowsBefore - 1, 'рядок мав зникнути з вихідної вкладки');
+    assertNotIncludes(generateHTML(), 'Рядок для переносу', 'вміст перенесеного рядка не має лишитись у вихідній вкладці');
+
+    switchToTab(targetId);
+    assertIncludes(generateHTML(), 'Рядок для переносу', 'перенесений рядок мав з’явитись у цільовій вкладці');
+  });
+
+  test('moveRowToTab() ігнорує спробу перенести на ту саму (активну) вкладку', () => {
+    clearCanvas();
+    addRow('1');
+    moveRowToTab(document.querySelector('#canvas .row'), activeTabId);
+    assert(document.querySelectorAll('#canvas .row').length === 1, 'рядок не мав зникнути при переносі "на себе"');
+  });
+
+  /* ─── Зручніше переміщення блоків: дублювання + вгору/вниз ──── */
+  test('dupBlock() дублює блок одразу після оригіналу з новим bid', () => {
+    clearCanvas();
+    const col = addRow('1').querySelector('.col');
+    const block = addBlockSilently('text', col);
+    addTemplateTextLine(block, '.tl-list', 'Оригінал');
+    const bidBefore = block.dataset.bid;
+
+    dupBlock(block);
+    const blocks = [...col.querySelectorAll('.block')];
+    assert(blocks.length === 2, `очікували 2 блоки в колонці, отримали ${blocks.length}`);
+    assert(blocks[0] === block, 'оригінал мав лишитись першим');
+    assert(blocks[1].dataset.bid !== bidBefore, 'копія мала отримати новий унікальний bid');
+    const occurrences = (generateHTML().match(/Оригінал/g) || []).length;
+    assert(occurrences === 2, `текст мав з’явитись двічі (оригінал + копія), знайдено ${occurrences}`);
+  });
+
+  test('moveBlock() переставляє блок вгору/вниз у межах колонки', () => {
+    clearCanvas();
+    const col = addRow('1').querySelector('.col');
+    const b1 = addBlockSilently('text', col);
+    addTemplateTextLine(b1, '.tl-list', 'Перший');
+    const b2 = addBlockSilently('text', col);
+    addTemplateTextLine(b2, '.tl-list', 'Другий');
+
+    moveBlock(b2, -1);
+    let blocks = [...col.querySelectorAll('.block')];
+    assert(blocks[0] === b2 && blocks[1] === b1, 'moveBlock(-1) мав поставити другий блок першим');
+
+    moveBlock(b2, 1);
+    blocks = [...col.querySelectorAll('.block')];
+    assert(blocks[0] === b1 && blocks[1] === b2, 'moveBlock(1) мав повернути початковий порядок');
+  });
+
+  // Прибираємо зайві вкладки, щоб звіт завершувався в чистому стані.
+  while (tabs.length > 1) closeTab(tabs[tabs.length - 1].id);
   clearCanvas();
 
   /* ─── Рендер результатів ─────────────────────── */

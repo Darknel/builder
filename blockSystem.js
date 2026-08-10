@@ -113,10 +113,56 @@ function bindBlockTile(block) {
   tile._bound = true;
   tile.addEventListener('click', e => {
     const action = e.target.closest('[data-action]')?.dataset.action;
-    if (action === 'del') { e.stopPropagation(); removeBlock(block); return; }
+    if (action === 'del')  { e.stopPropagation(); removeBlock(block); return; }
+    if (action === 'dup')  { e.stopPropagation(); dupBlock(block); return; }
+    if (action === 'up')   { e.stopPropagation(); moveBlock(block, -1); return; }
+    if (action === 'down') { e.stopPropagation(); moveBlock(block, 1); return; }
     if (action === 'drag') return;
     openSP(block);
   });
+}
+
+// Переставляє блок на 1 позицію вгору/вниз у межах ЙОГО колонки —
+// альтернатива drag&drop для тих, кому зручніше клікати, ніж тягати.
+function moveBlock(block, dir) {
+  const col = block.closest('.col');
+  if (!col) return;
+  const blocks = [...col.querySelectorAll('.block')];
+  const idx = blocks.indexOf(block);
+  const target = blocks[idx + dir];
+  if (!target) return;
+  if (dir === -1) col.insertBefore(block, target);
+  else col.insertBefore(target, block);
+  refreshCode();
+}
+
+// Дублює один блок (а не весь рядок, як dupRow) одразу після оригіналу.
+function dupBlock(block) {
+  // Якщо саме цей блок зараз відкритий у панелі — тимчасово повертаємо
+  // його поля з #sp-body назад у блок (withFieldsRestored, projectState.js),
+  // інакше cloneNode() склонував би блок БЕЗ вмісту полів.
+  const clone = withFieldsRestored(() => {
+    syncFormValuesToAttributes(block);
+    return block.cloneNode(true);
+  });
+
+  const oldBid = block.dataset.bid;
+  const newBid = ++blkCnt;
+  clone.dataset.bid = newBid;
+  // Той самий принцип, що й у dupRow(): переписуємо bid лише в точно
+  // визначених місцях (id="tl-N", data-bid), а не "сліпою" заміною
+  // підрядка по всьому innerHTML — щоб не зачепити Tailwind-класи.
+  clone.innerHTML = clone.innerHTML.replace(new RegExp(`id="tl-${oldBid}"`, 'g'), `id="tl-${newBid}"`);
+  clone.querySelectorAll('[data-bid]').forEach(el => { el.dataset.bid = newBid; });
+
+  const oldTile = clone.querySelector('.block-tile');
+  if (oldTile) { const freshTile = oldTile.cloneNode(true); oldTile.replaceWith(freshTile); }
+  bindBlockTile(clone);
+  bindBlockDrag(clone);
+
+  block.insertAdjacentElement('afterend', clone);
+  refreshCode();
+  showToast('Блок скопійовано');
 }
 
 function makeBlock(type) {
@@ -137,6 +183,9 @@ function makeBlock(type) {
       <div class="block-preview"><span class="hint">Натисніть для редагування</span></div>
     </div>
     <div class="block-actions">
+      <button class="ib" data-action="up" title="Вгору">↑</button>
+      <button class="ib" data-action="down" title="Вниз">↓</button>
+      <button class="ib" data-action="dup" title="Копіювати блок">⧉</button>
       <button class="ib" data-action="drag" title="Перетягнути">⠿</button>
       <button class="ib danger" data-action="del" title="Видалити">✕</button>
     </div>`;

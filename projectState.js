@@ -162,23 +162,47 @@ document.addEventListener('keydown', e => {
 });
 
 /* ─── Автозбереження ──────────────────────────── */
-const AUTOSAVE_KEY = 'builderV5_autosave_v1';
+// Проєкт тепер — це набір ВКЛАДОК (pageTabs.js), а не один canvas, тому
+// зберігаємо/відновлюємо весь масив tabs, а не лише поточний html.
+// tabs/activeTabId/createTabObject/loadTabIntoCanvas визначені в
+// pageTabs.js — цей файл лише ВИКЛИКАЄ їх (лише в момент виклику
+// save/load-функцій, коли pageTabs.js уже гарантовано завантажений;
+// порядок оголошення функцій тут значення не має).
+const AUTOSAVE_KEY = 'builderV5_autosave_v2';
 
 function saveProjectToStorage() {
   try {
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ html: serializeProject(), savedAt: Date.now() }));
+    syncActiveTabFromCanvas();
+    const data = {
+      version: 2,
+      tabs: tabs.map(t => ({ title: t.title, html: t.html })),
+      activeIndex: tabs.findIndex(t => t.id === activeTabId),
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
   } catch (e) { /* приватний режим / переповнене сховище — тихо ігноруємо */ }
 }
 
+// Повертає true, якщо якісь вкладки дійсно відновлено (і canvas вже
+// перерендерено на відновлену активну вкладку) — інакше false, і
+// викликач (pageTabs.js) сам подбає про дефолтну порожню вкладку.
 function loadAutosaveOnStartup() {
   let raw;
-  try { raw = localStorage.getItem(AUTOSAVE_KEY); } catch (e) { return; }
-  if (!raw) return;
+  try { raw = localStorage.getItem(AUTOSAVE_KEY); } catch (e) { return false; }
+  if (!raw) return false;
   let data;
-  try { data = JSON.parse(raw); } catch (e) { return; }
-  if (!data?.html?.trim()) return;
-  if (!window.confirm('Знайдено автозбережений проєкт із попередньої сесії. Відновити його?')) return;
-  rehydrateCanvas(data.html);
+  try { data = JSON.parse(raw); } catch (e) { return false; }
+  if (!data || !Array.isArray(data.tabs) || !data.tabs.length) return false;
+  const hasContent = data.tabs.some(t => t.html && t.html.trim());
+  if (!hasContent) return false;
+  const label = data.tabs.length > 1 ? `${data.tabs.length} вкладок` : '1 вкладку';
+  if (!window.confirm(`Знайдено автозбережений проєкт (${label}) із попередньої сесії. Відновити його?`)) return false;
+
+  tabs = data.tabs.map(t => createTabObject(t.title, t.html));
+  const idx = Number.isInteger(data.activeIndex) && data.activeIndex >= 0 && data.activeIndex < tabs.length ? data.activeIndex : 0;
+  activeTabId = tabs[idx].id;
+  loadTabIntoCanvas(tabs[idx]);
+  return true;
 }
 
 /* ─── Хук з refreshCode() (generateHTML.js) ──── */
@@ -191,7 +215,13 @@ function onProjectChanged() {
 
 /* ─── Експорт / імпорт проєкту (.json) ───────── */
 function exportProjectJSON() {
-  const data = { version: 1, html: serializeProject(), savedAt: Date.now() };
+  syncActiveTabFromCanvas();
+  const data = {
+    version: 2,
+    tabs: tabs.map(t => ({ title: t.title, html: t.html })),
+    activeIndex: tabs.findIndex(t => t.id === activeTabId),
+    savedAt: Date.now(),
+  };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -209,9 +239,22 @@ function importProjectJSON(file) {
   reader.onload = () => {
     let data;
     try { data = JSON.parse(reader.result); } catch (e) { showToast('Файл пошкоджений або не є JSON', 'error'); return; }
-    if (!data || typeof data.html !== 'string') { showToast('Невірний формат файлу проєкту', 'error'); return; }
-    rehydrateCanvas(data.html);
-    _history = [data.html]; _historyIndex = 0; updateUndoRedoButtons();
+    let newTabs;
+    if (data && Array.isArray(data.tabs) && data.tabs.length) {
+      // Поточний, багатовкладковий формат.
+      newTabs = data.tabs.map(t => createTabObject(t.title, t.html));
+    } else if (data && typeof data.html === 'string') {
+      // Файл, збережений ДО появи вкладок (версія 1) — імпортуємо як одну вкладку.
+      newTabs = [createTabObject('Імпортована сторінка', data.html)];
+    } else {
+      showToast('Невірний формат файлу проєкту', 'error');
+      return;
+    }
+    tabs = newTabs;
+    const idx = Number.isInteger(data.activeIndex) && data.activeIndex >= 0 && data.activeIndex < tabs.length ? data.activeIndex : 0;
+    activeTabId = tabs[idx].id;
+    loadTabIntoCanvas(tabs[idx]);
+    renderTabBar();
     showToast('✓ Проєкт завантажено');
   };
   reader.onerror = () => showToast('Не вдалося прочитати файл', 'error');
@@ -225,8 +268,6 @@ document.getElementById('load-project-input').addEventListener('change', e => {
   e.target.value = '';
 });
 
-/* ─── Ініціалізація ───────────────────────────── */
-// window.__BUILDER_TEST_MODE__ виставляється у tests.html, щоб
-// автотести не чіпали localStorage і не показували confirm().
-if (!window.__BUILDER_TEST_MODE__) loadAutosaveOnStartup();
-pushHistory(); // початковий знімок — база для першого undo
+/* Ініціалізація (створення першої вкладки, спроба відновити автозбереження,
+   перший знімок історії) відбувається в pageTabs.js — вона мусить
+   виконатись ПІСЛЯ того, як масив tabs/activeTabId уже готовий. */

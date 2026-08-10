@@ -365,6 +365,60 @@
     });
   });
 
+  /* ─── Ніде в програмі немає інших тегів заголовків, крім h3 ── */
+  test('Жоден шаблон не використовує h1/h2/h4-h6 — лише h3', () => {
+    SECTION_TEMPLATES.forEach(tpl => {
+      clearCanvas();
+      tpl.build();
+      const html = generateHTML();
+      assert(!/<h[1246]\b/.test(html), `шаблон "${tpl.key}" згенерував заборонений тег заголовка: ${html.match(/<h[1246]\b[^>]*>/)}`);
+    });
+  });
+
+  /* ─── "Зображення зліва + текст справа": DOM=текст,зображення; десктоп-порядок міняється, мобільний — ні ── */
+  test('Шаблон "Зображення зліва": на мобільній текст згори, на десктопі зображення зліва (order)', () => {
+    clearCanvas();
+    buildImageTextRow('left');
+    const cols = [...document.querySelectorAll('#canvas .col')];
+    assert(cols.length === 2, `очікували 2 колонки, отримали ${cols.length}`);
+    assert(cols[0].querySelector('.tl-input'), 'перша колонка в DOM (мобільна: згори) мала бути текстовою');
+    assert(cols[1].querySelector('.img-url'), 'друга колонка в DOM (мобільна: знизу) мала бути зображенням');
+    const html = generateHTML();
+    const colDivs = html.match(/<div class="[^"]*">/g).filter(d => d.includes('flex-col'));
+    assert(colDivs.length === 2, `очікували 2 div-колонки у виводі, знайшли ${colDivs.length}`);
+    assertIncludes(colDivs[0], 'md:order-2', 'текстова колонка (перша в DOM) мала отримати md:order-2, щоб піти на десктопі другою');
+    assertIncludes(colDivs[1], 'md:order-1', 'колонка зображення (друга в DOM) мала отримати md:order-1, щоб піти на десктопі першою (зліва)');
+  });
+
+  test('Шаблон "Зображення справа": DOM-порядок вже відповідає бажаному, без order-класів', () => {
+    clearCanvas();
+    buildImageTextRow('right');
+    const cols = [...document.querySelectorAll('#canvas .col')];
+    assert(cols[0].querySelector('.tl-input'), 'перша колонка мала бути текстовою (зліва на десктопі/згори на мобільній)');
+    assert(cols[1].querySelector('.img-url'), 'друга колонка мала бути зображенням (справа на десктопі/знизу на мобільній)');
+    const html = generateHTML();
+    assertNotIncludes(html, 'md:order-', 'для варіанту "зображення справа" order-класи не потрібні — DOM-порядок вже правильний');
+  });
+
+  test('Шаблон "Заголовок + текст + зображення": h3 → підзаголовок → текст → <img>, в одній колонці', () => {
+    clearCanvas();
+    const tpl = SECTION_TEMPLATES.find(t => t.key === 'title-text-image-stack');
+    tpl.build();
+    // Порожній .img-url нічого не рендерить (як і в будь-якому image-блоці) —
+    // виставляємо URL, щоб перевірити саме порядок елементів у виводі.
+    setField(document.querySelector('#canvas .block[data-type="image"]'), '.img-url', 'https://example.com/photo.jpg');
+    const html = generateHTML();
+    const order = [
+      html.indexOf('<h3'),
+      html.indexOf('Підзаголовок'),
+      html.indexOf('Текст, що розкриває'),
+      html.indexOf('<img'),
+    ];
+    assert(order.every(i => i !== -1), `очікували всі 4 елементи в виводі: ${JSON.stringify(order)}`);
+    assert(order[0] < order[1] && order[1] < order[2] && order[2] < order[3], `порядок мав бути h3 → підзаголовок → текст → img, отримали позиції ${JSON.stringify(order)}`);
+    assert(document.querySelectorAll('#canvas .row').length === 1, 'усе мало бути в ОДНІЙ колонці одного рядка');
+  });
+
   clearCanvas();
 
   /* ─── Рендер результатів ─────────────────────── */

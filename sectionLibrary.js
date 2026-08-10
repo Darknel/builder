@@ -46,7 +46,41 @@ function addTemplateTextLine(block, listSelector, text, opts = {}) {
     const hidden = node.querySelector('.tl-clr-cls');
     if (hidden) hidden.value = opts.colorCls;
   }
+  if (opts.weight) {
+    node.querySelectorAll('.tl-w').forEach(b => b.classList.toggle('is-on', b.dataset.val === opts.weight));
+  }
   list.appendChild(node);
+}
+
+// Рядок "зображення + текст" (2 колонки, layout 1,1): заголовок(h3) +
+// підзаголовок + текст в одній колонці, зображення в іншій.
+//
+// На мобільній верстці (grid-cols-1) колонки завжди стають одна під
+// одною у DOM-порядку — тому текстова колонка ЗАВЖДИ йде першою в DOM
+// (щоб на мобільній текст був згори, а зображення знизу — це те, що
+// попросили для ОБОХ варіантів). Щоб на десктопі зображення могло
+// опинитись ЗЛІВА (а не завжди справа, як диктував би DOM-порядок),
+// використовуємо CSS order (md:order-*) — самі колонки в DOM не
+// рухаємо, лише міняємо їх візуальну позицію на десктопі.
+function buildImageTextRow(imageSide) {
+  const rw = addRow('1,1');
+  rw.dataset.pyMob = 'py-10'; rw.dataset.pyDsk = 'py-14';
+  const [textCol, imgCol] = rw.querySelectorAll('.col');
+
+  if (imageSide === 'left') {
+    imgCol.dataset.orderDsk  = 'md:order-1';
+    textCol.dataset.orderDsk = 'md:order-2';
+  }
+  // imageSide === 'right' — DOM-порядок (текст, зображення) вже і так
+  // дає "текст зліва / зображення справа" на десктопі, order не потрібен.
+
+  const title = addBlockSilently('text', textCol);
+  addTemplateTextLine(title, '.tl-list', 'Заголовок', { tag: 'h3' });
+  addTemplateTextLine(title, '.tl-list', 'Підзаголовок', { weight: 'font-semibold' });
+  addTemplateTextLine(title, '.tl-list', 'Текст, що розкриває деталі вашої пропозиції.', {});
+
+  addBlockSilently('image', imgCol);
+  return rw;
 }
 
 const SECTION_TEMPLATES = [
@@ -93,6 +127,27 @@ const SECTION_TEMPLATES = [
       const col = rw.querySelector('.col');
       const t = addBlockSilently('text', col);
       addTemplateTextLine(t, '.tl-list', '© 2026 Компанія. Усі права захищено.', { align: 'text-center' });
+    },
+  },
+  {
+    key: 'image-left-text-right', icon: '🖼️', label: 'Зображення зліва + текст справа',
+    build() { buildImageTextRow('left'); },
+  },
+  {
+    key: 'image-right-text-left', icon: '🏞️', label: 'Зображення справа + текст зліва',
+    build() { buildImageTextRow('right'); },
+  },
+  {
+    key: 'title-text-image-stack', icon: '📚', label: 'Заголовок + текст + зображення',
+    build() {
+      const rw = addRow('1');
+      rw.dataset.pyMob = 'py-10'; rw.dataset.pyDsk = 'py-14';
+      const col = rw.querySelector('.col');
+      const t = addBlockSilently('text', col);
+      addTemplateTextLine(t, '.tl-list', 'Заголовок', { tag: 'h3' });
+      addTemplateTextLine(t, '.tl-list', 'Підзаголовок', { weight: 'font-semibold' });
+      addTemplateTextLine(t, '.tl-list', 'Текст, що розкриває деталі вашої пропозиції.', {});
+      addBlockSilently('image', col);
     },
   },
 ];

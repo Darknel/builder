@@ -66,7 +66,12 @@ function generateHTML() {
         const span  = lay.outSpans[i] || '';
         const cvMob = col.dataset.cvMob || 'justify-start';
         const cvDsk = col.dataset.cvDsk || 'md:justify-start';
-        out += `  <div class="${['flex','flex-col',span,cvMob,cvDsk].filter(Boolean).join(' ')}">\n`;
+        // orderMob/orderDsk — опційне перевпорядкування колонок (CSS order),
+        // напр. коли зображення має бути зліва на десктопі, але знизу на мобільній.
+        // Не виставляється в UI налаштувань, лише деякими готовими шаблонами.
+        const orderMob = col.dataset.orderMob || '';
+        const orderDsk = col.dataset.orderDsk || '';
+        out += `  <div class="${['flex','flex-col',span,cvMob,cvDsk,orderMob,orderDsk].filter(Boolean).join(' ')}">\n`;
         out += renderColBlocks(col);
         out += `  </div>\n`;
       });
@@ -87,7 +92,9 @@ function generateHTML() {
         const span  = lay.outSpans[i] || '';
         const cvMob = col.dataset.cvMob || 'justify-start';
         const cvDsk = col.dataset.cvDsk || 'md:justify-start';
-        out += `  <div class="${['flex','flex-col',span,cvMob,cvDsk,'relative','z-10'].filter(Boolean).join(' ')}">\n`;
+        const orderMob = col.dataset.orderMob || '';
+        const orderDsk = col.dataset.orderDsk || '';
+        out += `  <div class="${['flex','flex-col',span,cvMob,cvDsk,orderMob,orderDsk,'relative','z-10'].filter(Boolean).join(' ')}">\n`;
         out += renderColBlocks(col);
         out += `  </div>\n`;
       });
@@ -107,7 +114,9 @@ function generateHTML() {
         const span  = lay.outSpans[i] || '';
         const cvMob = col.dataset.cvMob || 'justify-start';
         const cvDsk = col.dataset.cvDsk || 'md:justify-start';
-        out += `    <div class="${['flex','flex-col',span,cvMob,cvDsk].filter(Boolean).join(' ')}">\n`;
+        const orderMob = col.dataset.orderMob || '';
+        const orderDsk = col.dataset.orderDsk || '';
+        out += `    <div class="${['flex','flex-col',span,cvMob,cvDsk,orderMob,orderDsk].filter(Boolean).join(' ')}">\n`;
         out += renderColBlocks(col);
         out += `    </div>\n`;
       });

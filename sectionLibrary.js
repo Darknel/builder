@@ -27,6 +27,17 @@ function setField(block, selector, value) {
 function addTemplateTextLine(block, listSelector, text, opts = {}) {
   const list = block.querySelector(listSelector);
   if (!list) return;
+  // Щойно створений текстовий блок (makeBlock('text') → buildTextFields())
+  // вже містить один порожній рядок за замовчуванням, щоб користувачу було
+  // куди одразу друкувати. Коли шаблон додає СВІЙ перший рядок у той самий
+  // список, той порожній рядок лишався б попереду — шаблон виглядав би так,
+  // ніби починається з порожнього рядка, а вже потім іде текст. Прибираємо
+  // його, але лише якщо він єдиний і справді порожній (не чіпаємо підписи
+  // під фото/відео — їхні списки й так стартують порожніми, без цього рядка).
+  const existing = [...list.children];
+  if (existing.length === 1 && !existing[0].querySelector('.tl-input')?.value.trim()) {
+    existing[0].remove();
+  }
   const div = document.createElement('div');
   div.innerHTML = makeTextLine(block.dataset.bid);
   const node = div.firstElementChild;

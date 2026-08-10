@@ -365,6 +365,20 @@
     });
   });
 
+  /* ─── Regression: перший рядок текстового блоку в шаблонах не порожній ── */
+  test('Жоден шаблон не залишає порожній перший рядок у .tl-list', () => {
+    SECTION_TEMPLATES.forEach(tpl => {
+      clearCanvas();
+      tpl.build();
+      document.querySelectorAll('#canvas .block[data-type="text"] .tl-list').forEach(list => {
+        const lines = [...list.querySelectorAll('.tl-input')];
+        assert(lines.length > 0, `шаблон "${tpl.key}": текстовий блок без жодного рядка`);
+        assert(lines[0].value.trim() !== '', `шаблон "${tpl.key}": перший рядок .tl-list порожній (значення: ${JSON.stringify(lines.map(l => l.value))})`);
+        assert(lines.every(l => l.value.trim() !== ''), `шаблон "${tpl.key}": є порожній рядок серед ${JSON.stringify(lines.map(l => l.value))}`);
+      });
+    });
+  });
+
   /* ─── Ніде в програмі немає інших тегів заголовків, крім h3 ── */
   test('Жоден шаблон не використовує h1/h2/h4-h6 — лише h3', () => {
     SECTION_TEMPLATES.forEach(tpl => {

@@ -17,7 +17,15 @@
       <div class="logo-icon">B</div>
       Builder
     </a>
+    <button class="hbtn ghost" id="btn-undo" title="Скасувати (Ctrl+Z)" disabled>↶</button>
+    <button class="hbtn ghost" id="btn-redo" title="Повторити (Ctrl+Y)" disabled>↷</button>
     <div class="h-gap"></div>
+    <button class="hbtn" id="btn-templates" title="Готові секції">🧩 Шаблони</button>
+    <button class="hbtn ghost" id="btn-save-project" title="Завантажити проєкт як .json файл">💾 Зберегти</button>
+    <label class="hbtn ghost" id="btn-load-project" title="Завантажити проєкт із .json файлу" style="cursor:pointer;">
+      📂 Відкрити
+      <input type="file" accept="application/json" id="load-project-input" style="display:none;">
+    </label>
     <button class="hbtn ghost" id="btn-clear">Очистити</button>
     <button class="hbtn" id="btn-code">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 3L1 8l4 5M11 3l4 5-4 5"/></svg>
@@ -117,6 +125,19 @@
   </div>
 </div>
 
+<!-- ══ TEMPLATES MODAL ═════════════════════════ -->
+<div class="overlay" id="templates-overlay">
+  <div class="modal" style="width:640px;max-width:96vw;">
+    <div class="modal-header">
+      <span class="modal-title">🧩 Готові секції</span>
+      <button class="modal-close" id="templates-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tpl-grid" id="tpl-grid"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ CODE DRAWER ════════════════════════════ -->
 <div class="code-drawer" id="code-drawer">
   <div class="drawer-header">
@@ -127,6 +148,11 @@
       </button>
     </div>
     <div class="drawer-actions">
+      <label class="toggle-row" style="margin-right:8px;" title="Додає &lt;script&gt; Tailwind CDN і базову тему, щоб код працював на будь-якій сторінці — не лише там, де Tailwind вже підключено">
+        <input type="checkbox" class="toggle-input" id="standalone-toggle">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">Самодостатній HTML</span>
+      </label>
       <button class="dbtn" id="btn-refresh">↺ Оновити</button>
       <button class="dbtn primary" id="btn-copy-drawer">Копіювати</button>
       <button class="dbtn" id="btn-drawer-close">✕</button>
@@ -173,22 +199,30 @@
   ═══════════════════════════════════════════════
   ПІДКЛЮЧЕННЯ СКРИПТІВ
   ───────────────────────────────────────────────
-  script.js            — базовий стан, LAYOUTS/BLOCK_META, row/block система
-  core.js               — спільний рушій: blockToHTML(), buildFields(),
-                           buildPadBar(), textLinesToHTML(), і т.д.
-  textElement.js         — блок "Текст" (поля + рендер HTML)
-  imageElement.js        — блок "Зображення" (поля + рендер HTML)
-  videoElement.js        — блок "Відео" (поля + рендер HTML)
-  switcherElement.js     — блок "Перемикач" (поля + рендер HTML)
-  swimageElement.js      — блок "Зображення (перемикача)" (поля + рендер HTML)
-  dragElements.js         — drag & drop рядків/блоків
-  generateHTML.js         — збірка фінального HTML з рядків/колонок
-  clearButton.js          — кнопка "Очистити"
-  copyCode.js             — кнопка "Скопіювати HTML"
-  translation.js          — переклад тексту на російську через AI
+  state.js         — стан, LAYOUTS/BLOCK_META, showToast, SWITCHER_RUNTIME_JS
+  core.js          — спільний рушій: esc(), safeUrl(), debounce(), blockToHTML(),
+                      buildFields(), buildPadBar(), textLinesToHTML(), завантаження зображень
+  textElement.js   — блок "Текст" (поля + рендер HTML)
+  imageElement.js  — блок "Зображення" (поля + рендер HTML)
+  videoElement.js  — блок "Відео" (поля + рендер HTML)
+  switcherElement.js — блок "Перемикач" (поля + рендер HTML)
+  swimageElement.js  — блок "Зображення (перемикача)" (поля + рендер HTML)
+  dragElements.js  — drag & drop рядків/блоків
+  generateHTML.js  — збірка фінального HTML з рядків/колонок + standalone-експорт
+  modals.js        — код-шухляда, модалка розмітки/блоку, Escape-хендлер
+  previewPanel.js  — права панель живого перегляду
+  blockSystem.js   — панель налаштувань блоку + CRUD блоків
+  rowSystem.js     — панель налаштувань рядка (CRUD) + CRUD рядків/колонок
+  rowSettings.js   — розмітка й обробники панелі налаштувань рядка
+  delegate.js       — делеговані обробники подій (заміна inline onclick/oninput)
+  sectionLibrary.js      — бібліотека готових секцій
+  projectState.js    — автозбереження, експорт/імпорт проєкту, undo/redo
+  clearButton.js    — кнопка "Очистити"
+  copyCode.js       — кнопка "Скопіювати HTML"
+  translation.js    — переклад тексту на російську через AI
   ═══════════════════════════════════════════════
 -->
-<script src="script.js"></script>
+<script src="state.js"></script>
 <script src="core.js"></script>
 <script src="textElement.js"></script>
 <script src="imageElement.js"></script>
@@ -197,6 +231,14 @@
 <script src="swimageElement.js"></script>
 <script src="dragElements.js"></script>
 <script src="generateHTML.js"></script>
+<script src="modals.js"></script>
+<script src="previewPanel.js"></script>
+<script src="blockSystem.js"></script>
+<script src="rowSystem.js"></script>
+<script src="rowSettings.js"></script>
+<script src="delegate.js"></script>
+<script src="sectionLibrary.js"></script>
+<script src="projectState.js"></script>
 <script src="clearButton.js"></script>
 <script src="copyCode.js"></script>
 <script src="translation.js"></script>

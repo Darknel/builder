@@ -36,7 +36,7 @@ function generateHTML() {
     const haMob  = rw.dataset.haMob || '';
     const haDsk  = rw.dataset.haDsk || '';
     const bgColor  = rw.dataset.bgColor  || '';
-    const bgImage  = rw.dataset.bgImage  || '';
+    const bgImage  = safeUrl(rw.dataset.bgImage, { allowDataImage: true });
     const bgSize   = rw.dataset.bgSize   || 'cover';
     const bgPos    = rw.dataset.bgPos    || 'center';
     const bgRepeat = rw.dataset.bgRepeat || 'no-repeat';
@@ -50,9 +50,9 @@ function generateHTML() {
     // ── Mode: css ──────────────────────────────────────────────────────
     if (!bgImage || bgMode === 'css') {
       const styleParts = [];
-      if (bgColor) styleParts.push(`background-color:${bgColor}`);
+      if (bgColor) styleParts.push(`background-color:${esc(bgColor)}`);
       if (bgImage) {
-        styleParts.push(`background-image:url('${esc(bgImage)}')`);
+        styleParts.push(`background-image:url("${esc(bgImage)}")`);
         styleParts.push(`background-size:${bgSize}`);
         styleParts.push(`background-position:${bgPos}`);
         styleParts.push(`background-repeat:${bgRepeat}`);
@@ -76,7 +76,7 @@ function generateHTML() {
     // <img> absolute behind content; use min-height to size container
     } else if (bgMode === 'overlay') {
       const styleParts = [];
-      if (bgColor) styleParts.push(`background-color:${bgColor}`);
+      if (bgColor) styleParts.push(`background-color:${esc(bgColor)}`);
       if (minHMob) styleParts.push(`min-height:${minHMob}`);
       let cls = `${baseCls} relative overflow-hidden`;
       if (minHDsk) cls += ` md:min-h-[${minHDsk.replace(/\s/g,'_')}]`;
@@ -97,7 +97,7 @@ function generateHTML() {
     // <img> in flow → sets container height naturally; content overlaid absolute
     } else if (bgMode === 'natural') {
       const styleParts = [];
-      if (bgColor) styleParts.push(`background-color:${bgColor}`);
+      if (bgColor) styleParts.push(`background-color:${esc(bgColor)}`);
       const style = styleParts.length ? ` style="${styleParts.join(';')}"` : '';
       out += `<div class="relative overflow-hidden"${style}>\n`;
       out += `  <img src="${esc(bgImage)}" alt="" class="w-full block"${bgPos !== 'center' ? ` style="object-position:${bgPos}"`:''} aria-hidden="true">\n`;
@@ -130,4 +130,49 @@ function refreshCode() {
   const html = generateHTML();
   document.getElementById('code-out').value = html;
   updateRightPreview(html);
+  // Хук для persistence.js (undo/redo історія + автозбереження).
+  // Перевірка typeof — щоб generateHTML.js не залежав від порядку
+  // підключення persistence.js.
+  if (typeof onProjectChanged === 'function') onProjectChanged();
+}
+
+/* ─── Standalone export ───────────────────────────
+   Експортований фрагмент розрахований на сторінку, де Tailwind
+   вже підключено (напр. CMS "Zhuk" з власними brand/zhuk-* токенами
+   в конфігу). Для випадків, коли код вставляється в довільну
+   сторінку БЕЗ Tailwind, "Самодостатній HTML" загортає фрагмент
+   у повний документ з Tailwind CDN + мінімальним конфігом тем,
+   що відтворює brand/zhuk-* кольори з палітри редактора тексту. */
+const STANDALONE_TAILWIND_CONFIG = `tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: 'var(--brand-color, #2563eb)',
+        'brand-dark': 'var(--brand-color, #1d4ed8)',
+        'zhuk-dark-gray': '#222222',
+        'zhuk-gray': '#96979A',
+        'zhuk-red': '#d23434',
+        'zhuk-yellow': '#FDBB2F',
+      },
+    },
+  },
+};`;
+
+function wrapStandaloneHTML(html) {
+  return `<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Сторінка</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<script>
+${STANDALONE_TAILWIND_CONFIG}
+<\/script>
+<style>*,*::before,*::after{box-sizing:border-box}img{max-width:100%;height:auto;display:block}</style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
 }

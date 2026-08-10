@@ -17,6 +17,11 @@ function clearAll() {
   document.getElementById('code-out').value = '';
   _ppFrameReady = false;
   updateRightPreview('');
+  // Очищення — окрема дія, тож фіксуємо її в історії undo одразу
+  // (не через дебаунснутий хук refreshCode(), щоб не злилась із
+  // сусідніми редагуваннями) і одразу автозберігаємо порожній стан.
+  if (typeof pushHistory === 'function') pushHistory();
+  if (typeof saveProjectToStorage === 'function') saveProjectToStorage();
   showToast('Очищено', 'info');
 }
 document.getElementById('btn-clear').addEventListener('click', clearAll);

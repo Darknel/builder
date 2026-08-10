@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Builder — автотести</title>
+<link rel="stylesheet" href="style_min.css">
+<style>
+  .app { display: none !important; }
+  .overlay, .code-drawer, .toast { display: none !important; }
+  #test-report { max-width: 900px; margin: 24px auto; padding: 0 16px; font-family: monospace; font-size: 13px; }
+  #test-report h1 { font-family: sans-serif; font-size: 20px; margin-bottom: 4px; }
+  #test-summary { font-family: sans-serif; font-weight: 700; margin-bottom: 16px; padding: 10px 14px; border-radius: 6px; }
+  #test-summary.ok   { background: #dcfce7; color: #166534; }
+  #test-summary.fail { background: #fee2e2; color: #991b1b; }
+  .t-case { padding: 8px 10px; border-radius: 5px; margin-bottom: 4px; white-space: pre-wrap; word-break: break-word; }
+  .t-pass { background: #f0fdf4; color: #166534; }
+  .t-fail { background: #fef2f2; color: #991b1b; }
+  .t-detail { display: block; margin-top: 4px; color: #6b7280; font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="test-report">
+  <h1>Builder v5 — автотести (браузерний smoke-test, без build-тулінгу)</h1>
+  <div id="test-summary">Виконується…</div>
+  <div id="test-cases"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     Нижче — та сама розмітка, що й у Builder_v42.html (приховано
+     через CSS вище). Скрипти застосунку читають ці елементи за id
+     під час завантаження, тому для чесного (не-mock) тестування
+     generateHTML()/blockToHTML() ми піднімаємо ту саму сторінку,
+     а не мокаємо DOM вручну.
+═════════════════════════════════════════════════════════════════ -->
+<div class="app">
+  <header class="header">
+    <a href="#" class="logo"><div class="logo-icon">B</div>Builder</a>
+    <button class="hbtn ghost" id="btn-undo" disabled>↶</button>
+    <button class="hbtn ghost" id="btn-redo" disabled>↷</button>
+    <div class="h-gap"></div>
+    <button class="hbtn" id="btn-templates">🧩 Шаблони</button>
+    <button class="hbtn ghost" id="btn-save-project">💾 Зберегти</button>
+    <label class="hbtn ghost" id="btn-load-project">📂 Відкрити<input type="file" id="load-project-input" style="display:none;"></label>
+    <button class="hbtn ghost" id="btn-clear">Очистити</button>
+    <button class="hbtn" id="btn-code">Код</button>
+    <button class="hbtn" id="btn-translate">Перекласти</button>
+    <button class="hbtn primary" id="btn-copy">Скопіювати HTML</button>
+  </header>
+  <div class="workspace">
+    <aside class="settings-panel" id="settings-panel">
+      <div class="sp-header">
+        <span class="sp-header-icon" id="sp-icon">◻</span>
+        <span class="sp-header-title" id="sp-title">Налаштування</span>
+        <button class="sp-close-btn" id="sp-close">✕</button>
+      </div>
+      <div class="device-tabs" id="device-tabs">
+        <button class="device-tab" data-device="mobile">📱</button>
+        <button class="device-tab is-active" data-device="desktop">🖥</button>
+      </div>
+      <div class="sp-body show-desktop" id="sp-body"><div class="sp-empty"></div></div>
+    </aside>
+    <div class="canvas-area" id="canvas-area">
+      <div class="canvas" id="canvas">
+        <div class="empty-state" id="empty-state" tabindex="0" role="button"></div>
+        <div class="add-row-zone" id="add-row-zone"><button class="add-row-btn" id="add-row-main">Додати контейнер</button></div>
+      </div>
+    </div>
+    <div class="preview-panel" id="preview-panel">
+      <div class="pp-header">
+        <span class="pp-title">Перегляд</span>
+        <div class="pp-tabs">
+          <button class="pp-tab is-active" data-device="desktop" id="pp-tab-desktop">🖥</button>
+          <button class="pp-tab" data-device="mobile" id="pp-tab-mobile">📱</button>
+        </div>
+      </div>
+      <div class="pp-viewport-wrap" id="pp-viewport-wrap">
+        <div class="pp-scale-wrap" id="pp-scale-wrap"><iframe class="pp-frame" id="pp-frame"></iframe></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="layout-overlay"><div class="modal"><div class="modal-header"><span class="modal-title"></span><button class="modal-close" id="layout-modal-close">✕</button></div><div class="modal-body"><div class="layout-grid" id="layout-grid"></div></div></div></div>
+<div class="overlay" id="block-overlay"><div class="modal"><div class="modal-header"><span class="modal-title"></span><button class="modal-close" id="block-modal-close">✕</button></div><div class="modal-body"><div class="block-pick-grid" id="block-pick-grid"></div></div></div></div>
+<div class="overlay" id="templates-overlay"><div class="modal"><div class="modal-header"><span class="modal-title"></span><button class="modal-close" id="templates-modal-close">✕</button></div><div class="modal-body"><div class="tpl-grid" id="tpl-grid"></div></div></div></div>
+
+<div class="code-drawer" id="code-drawer">
+  <div class="drawer-header">
+    <div class="drawer-tabs"><button class="dtab is-active" data-tab="code">HTML</button></div>
+    <div class="drawer-actions">
+      <label class="toggle-row"><input type="checkbox" class="toggle-input" id="standalone-toggle"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+      <button class="dbtn" id="btn-refresh">↺</button>
+      <button class="dbtn primary" id="btn-copy-drawer">Копіювати</button>
+      <button class="dbtn" id="btn-drawer-close">✕</button>
+    </div>
+  </div>
+  <div class="drawer-pane is-active" id="pane-code"><textarea class="code-output" id="code-out" readonly></textarea></div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="overlay" id="translate-overlay">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title"></span><button class="modal-close" id="translate-modal-close">✕</button></div>
+    <div class="modal-body">
+      <div id="translate-status"><span id="translate-status-text"></span></div>
+      <button class="hbtn primary" id="btn-do-translate">Перекласти</button>
+      <button class="hbtn" id="btn-copy-ru" disabled>Копіювати</button>
+      <textarea id="ru-html-out" readonly></textarea>
+    </div>
+  </div>
+</div>
+
+<script>window.__BUILDER_TEST_MODE__ = true;</script>
+<script src="state.js"></script>
+<script src="core.js"></script>
+<script src="textElement.js"></script>
+<script src="imageElement.js"></script>
+<script src="videoElement.js"></script>
+<script src="switcherElement.js"></script>
+<script src="swimageElement.js"></script>
+<script src="dragElements.js"></script>
+<script src="generateHTML.js"></script>
+<script src="modals.js"></script>
+<script src="previewPanel.js"></script>
+<script src="blockSystem.js"></script>
+<script src="rowSystem.js"></script>
+<script src="rowSettings.js"></script>
+<script src="delegate.js"></script>
+<script src="sectionLibrary.js"></script>
+<script src="projectState.js"></script>
+<script src="clearButton.js"></script>
+<script src="copyCode.js"></script>
+<script src="translation.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════
+   Тестовий раннер — простий, без залежностей.
+   Кожен тест: живий виклик реальних функцій застосунку
+   (generateHTML, blockToHTML, esc, safeUrl, ...) на реальному
+   DOM цієї сторінки — не mock, справжня інтеграція.
+═══════════════════════════════════════════════ */
+(function () {
+  const cases = [];
+  function test(name, fn) {
+    try {
+      fn();
+      cases.push({ name, pass: true });
+    } catch (err) {
+      cases.push({ name, pass: false, detail: err.message });
+    }
+  }
+  function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed'); }
+  function assertIncludes(haystack, needle, msg) {
+    assert(haystack.includes(needle), (msg || 'expected string to include substring') + `\n  очікували підрядок: ${JSON.stringify(needle)}\n  отримали: ${JSON.stringify(haystack.slice(0, 300))}`);
+  }
+  function assertNotIncludes(haystack, needle, msg) {
+    assert(!haystack.includes(needle), (msg || 'expected string NOT to include substring') + `\n  небажаний підрядок: ${JSON.stringify(needle)}\n  отримали: ${JSON.stringify(haystack.slice(0, 300))}`);
+  }
+  function clearCanvas() { if (typeof clearAll === 'function') clearAll(); }
+
+  /* ─── esc() ──────────────────────────────────── */
+  test('esc() екранує & < > " \'', () => {
+    assert(esc(`&<>"'`) === '&amp;&lt;&gt;&quot;&#39;', 'esc() output: ' + esc(`&<>"'`));
+  });
+
+  /* ─── safeUrl() ──────────────────────────────── */
+  test('safeUrl() пропускає http(s), відкидає javascript:', () => {
+    assert(safeUrl('https://example.com/a.jpg') === 'https://example.com/a.jpg');
+    assert(safeUrl('javascript:alert(1)') === '');
+    assert(safeUrl('  http://x.com  ') === 'http://x.com');
+  });
+  test('safeUrl() з allowDataImage пропускає лише data:image/*', () => {
+    assert(safeUrl('data:image/png;base64,AAAA', { allowDataImage: true }) === 'data:image/png;base64,AAAA');
+    assert(safeUrl('data:text/html;base64,AAAA', { allowDataImage: true }) === '');
+    assert(safeUrl('data:image/png;base64,AAAA') === ''); // без allowDataImage — відхиляємо
+  });
+
+  /* ─── generateHTML(): порожній canvas ────────── */
+  test('generateHTML() повертає "" на порожньому canvas', () => {
+    clearCanvas();
+    assert(generateHTML() === '', 'очікували порожній рядок, отримали: ' + generateHTML());
+  });
+
+  /* ─── Текстовий блок: рендер + екранування ───── */
+  test('Текстовий блок рендериться з правильним тегом і текстом', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    const col = rw.querySelector('.col');
+    const block = addBlockSilently('text', col);
+    addTemplateTextLine(block, '.tl-list', 'Привіт, світ', { tag: 'h3' });
+    const html = generateHTML();
+    assertIncludes(html, '<h3', 'очікували тег h3 у виводі');
+    assertIncludes(html, 'Привіт, світ', 'очікували текст рядка у виводі');
+  });
+
+  test('Текстовий блок екранує спецсимволи (XSS regression)', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    const col = rw.querySelector('.col');
+    const block = addBlockSilently('text', col);
+    addTemplateTextLine(block, '.tl-list', '<scr' + 'ipt>alert(1)</scr' + 'ipt>"quoted"');
+    const html = generateHTML();
+    assertNotIncludes(html, '<scr' + 'ipt>alert(1)</scr' + 'ipt>', 'сирий script-тег не має потрапляти у вивід як є');
+    assertIncludes(html, '&lt;script&gt;', 'очікували екранований тег');
+  });
+
+  /* ─── Фон рядка: bgColor escaping (regression на знайдений XSS) ── */
+  test('bgColor рядка екранується в атрибуті style (не можна вирватись лапками)', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    rw.dataset.bgColor = 'red" onmouseover="alert(1)';
+    rw.dataset.bgMode = 'css';
+    const html = generateHTML();
+    assertNotIncludes(html, 'onmouseover="alert(1)"', 'bgColor не повинен ламати style-атрибут');
+    assertIncludes(html, '&quot;', 'очікували, що лапки в bgColor екрановано');
+  });
+
+  test('buildRowSettingsHTML() екранує bgColor/bgImage у value=""', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    rw.dataset.bgColor = '"><img src=x onerror=alert(1)>';
+    const panelHtml = buildRowSettingsHTML(rw);
+    assertNotIncludes(panelHtml, '"><img src=x onerror=alert(1)>', 'значення поля не має вириватись із value=""');
+  });
+
+  /* ─── Video MIME regression ──────────────────── */
+  test('renderVideoHTML() підбирає правильний MIME для .webm', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    const col = rw.querySelector('.col');
+    const block = addBlockSilently('video', col);
+    setField(block, '.vid-url', 'https://example.com/clip.webm');
+    const html = generateHTML();
+    assertIncludes(html, 'type="video/webm"', 'очікували video/webm для .webm файлу');
+    assertNotIncludes(html, 'type="video/mp4"', 'не повинно залишитись хардкоджене video/mp4');
+  });
+
+  /* ─── Undo/redo базовий цикл ──────────────────── */
+  test('undo() повертає canvas до попереднього стану', () => {
+    clearCanvas();
+    pushHistory(); // база: порожній canvas
+    addRow('1');
+    pushHistory();
+    assert(document.querySelectorAll('#canvas .row').length === 1, 'мало бути 1 контейнер після addRow');
+    undo();
+    assert(document.querySelectorAll('#canvas .row').length === 0, 'undo мав прибрати доданий контейнер');
+    redo();
+    assert(document.querySelectorAll('#canvas .row').length === 1, 'redo мав повернути контейнер');
+  });
+
+  /* ─── Serialize / rehydrate не дублює службову розмітку ─── */
+  test('serializeProject()/rehydrateCanvas() не плодить #empty-state/#add-row-zone', () => {
+    clearCanvas();
+    addRow('1');
+    for (let i = 0; i < 3; i++) rehydrateCanvas(serializeProject());
+    assert(document.querySelectorAll('#empty-state').length === 1, `очікували 1 #empty-state, отримали ${document.querySelectorAll('#empty-state').length}`);
+    assert(document.querySelectorAll('#add-row-zone').length === 1, `очікували 1 #add-row-zone, отримали ${document.querySelectorAll('#add-row-zone').length}`);
+    assert(document.querySelectorAll('#canvas .row').length === 1, 'кількість рядків не повинна рости від самого лише round-trip');
+  });
+
+  /* ─── Serialize / rehydrate round-trip ───────── */
+  test('serializeProject() → rehydrateCanvas() зберігає вміст блоку', () => {
+    clearCanvas();
+    const rw = addRow('1');
+    const col = rw.querySelector('.col');
+    const block = addBlockSilently('text', col);
+    addTemplateTextLine(block, '.tl-list', 'Round-trip перевірка');
+    const snap = serializeProject();
+    rehydrateCanvas(snap);
+    const html = generateHTML();
+    assertIncludes(html, 'Round-trip перевірка', 'текст мав пережити serialize→rehydrate');
+  });
+
+  /* ─── Шаблони секцій не кидають винятків ──────── */
+  test('Усі SECTION_TEMPLATES будуються без винятків і додають рядок(и)', () => {
+    SECTION_TEMPLATES.forEach(tpl => {
+      clearCanvas();
+      tpl.build();
+      const rows = document.querySelectorAll('#canvas .row').length;
+      assert(rows > 0, `шаблон "${tpl.key}" не додав жодного контейнера`);
+    });
+  });
+
+  clearCanvas();
+
+  /* ─── Рендер результатів ─────────────────────── */
+  const passCount = cases.filter(c => c.pass).length;
+  const summary = document.getElementById('test-summary');
+  summary.textContent = `${passCount} / ${cases.length} тестів пройшло`;
+  summary.className = passCount === cases.length ? 'ok' : 'fail';
+
+  const list = document.getElementById('test-cases');
+  cases.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 't-case ' + (c.pass ? 't-pass' : 't-fail');
+    div.textContent = (c.pass ? '✓ ' : '✗ ') + c.name;
+    if (!c.pass && c.detail) {
+      const d = document.createElement('span');
+      d.className = 't-detail';
+      d.textContent = c.detail;
+      div.appendChild(d);
+    }
+    list.appendChild(div);
+  });
+})();
+</script>
+</body>
+</html>

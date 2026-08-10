@@ -5,8 +5,10 @@
 
 /* ─── Copy HTML ──────────────────────────────── */
 function copyHTML() {
-  const code = document.getElementById('code-out').value;
-  if (!code) { showToast('Немає HTML для копіювання', 'error'); return; }
+  const rawCode = document.getElementById('code-out').value;
+  if (!rawCode) { showToast('Немає HTML для копіювання', 'error'); return; }
+  const standalone = document.getElementById('standalone-toggle')?.checked;
+  const code = standalone ? wrapStandaloneHTML(rawCode) : rawCode;
   navigator.clipboard.writeText(code)
     .then(() => showToast('✓ HTML скопійовано'))
     .catch(() => {

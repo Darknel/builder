@@ -7,13 +7,18 @@
    виконує renderSwimageStack() в core.js, а не тут.
 
    - buildSwImageFields(bid) — панель налаштувань у sidebar:
-       ID для перемикача, URL базового зображення, alt,
-       ширина, вирівнювання, кути, тінь, object-fit
+       ID для перемикача, URL (або завантаження файлу) базового
+       зображення, alt, ширина, вирівнювання, кути, тінь, object-fit
 
    - renderSwimageHTML(...)  — генерація фінального HTML для
        одного <img> (викликається з core.js → blockToHTML()
        для type === 'swimage', а також з renderSwimageStack()
        коли кілька swimage йдуть підряд)
+
+   URL зображення проходить через safeUrl() (core.js) — приймаються
+   лише http(s) та (для завантажених файлів) data:image/*.
+
+   Усі поля без inline onclick/oninput — керування через delegate.js.
 ═══════════════════════════════════════════════ */
 
 /* ─── Fields (панель налаштувань) ────────────── */
@@ -23,16 +28,22 @@ function buildSwImageFields(bid) {
       <div class="sp-group-title">Зображення (перемикач)</div>
       <div class="form-field">
         <label class="form-label">ID для перемикача</label>
-        <input class="fi sw-id" type="text" placeholder="Напр. img-blue" oninput="refreshCode()">
+        <input class="fi sw-id" type="text" placeholder="Напр. img-blue">
         <div style="font-size:11px;color:var(--t4);margin-top:4px;line-height:1.5;">Той самий ID впишіть у «ID зображення-цілі» відповідної кнопки перемикача</div>
       </div>
       <div class="form-field" style="margin-top:8px;">
         <label class="form-label">URL зображення (базове, поки нічого не вибрано)</label>
-        <input class="fi img-url" type="url" placeholder="https://…/photo.jpg" oninput="refreshCode()">
+        <input class="fi img-url" type="url" placeholder="https://…/photo.jpg">
+      </div>
+      <div class="form-field">
+        <label class="img-dropzone">
+          📁 Перетягніть файл сюди або натисніть, щоб обрати
+          <input type="file" accept="image/*" data-action="img-file-change">
+        </label>
       </div>
       <div class="form-field">
         <label class="form-label">Alt-текст (SEO)</label>
-        <input class="fi img-alt" placeholder="Опис зображення" oninput="refreshCode()">
+        <input class="fi img-alt" placeholder="Опис зображення">
       </div>
     </div>
     <div class="sp-group">
@@ -40,7 +51,7 @@ function buildSwImageFields(bid) {
       <div class="f2">
         <div class="form-field mob-only">
           <label class="form-label">📱 Ширина</label>
-          <select class="fsel img-w-mob" oninput="refreshCode()">
+          <select class="fsel img-w-mob">
             <option value="max-w-full h-auto w-full">На всю ширину</option>
             <option value="">Оригінальний розмір (1:1)</option>
             <option value="max-w-full h-auto w-auto">Авто</option>
@@ -51,7 +62,7 @@ function buildSwImageFields(bid) {
         </div>
         <div class="form-field dsk-only">
           <label class="form-label">🖥 Ширина</label>
-          <select class="fsel img-w-dsk" oninput="refreshCode()">
+          <select class="fsel img-w-dsk">
             <option value="md:max-w-full md:h-auto md:w-full">На всю ширину</option>
             <option value="md:max-w-none md:h-auto md:w-auto">Оригінальний розмір (1:1)</option>
             <option value="md:max-w-full md:h-auto md:w-auto">Авто</option>
@@ -62,7 +73,7 @@ function buildSwImageFields(bid) {
         </div>
         <div class="form-field mob-only">
           <label class="form-label">📱 Вирівнювання</label>
-          <select class="fsel img-align-mob" oninput="refreshCode()">
+          <select class="fsel img-align-mob">
             <option value="mr-auto">Ліво</option>
             <option value="mx-auto">По центру</option>
             <option value="ml-auto">Право</option>
@@ -70,7 +81,7 @@ function buildSwImageFields(bid) {
         </div>
         <div class="form-field dsk-only">
           <label class="form-label">🖥 Вирівнювання</label>
-          <select class="fsel img-align-dsk" oninput="refreshCode()">
+          <select class="fsel img-align-dsk">
             <option value="md:mr-auto md:ml-0">Ліво</option>
             <option value="md:mx-auto">По центру</option>
             <option value="md:ml-auto md:mr-0">Право</option>
@@ -81,7 +92,7 @@ function buildSwImageFields(bid) {
       <div class="f2">
         <div class="form-field">
           <label class="form-label">Кути</label>
-          <select class="fsel img-radius" oninput="refreshCode()">
+          <select class="fsel img-radius">
             <option value="">Прямі</option>
             <option value="rounded">Слабкі</option>
             <option value="rounded-lg">Середні</option>
@@ -92,7 +103,7 @@ function buildSwImageFields(bid) {
         </div>
         <div class="form-field">
           <label class="form-label">Тінь</label>
-          <select class="fsel img-shadow" oninput="refreshCode()">
+          <select class="fsel img-shadow">
             <option value="">Без</option>
             <option value="shadow-sm">Легка</option>
             <option value="shadow">Нормальна</option>
@@ -104,7 +115,7 @@ function buildSwImageFields(bid) {
       </div>
       <div class="form-field">
         <label class="form-label">Підгонка (object-fit)</label>
-        <select class="fsel img-fit" oninput="refreshCode()">
+        <select class="fsel img-fit">
           <option value="object-cover">cover — заповнити</option>
           <option value="object-contain">contain — вмістити</option>
           <option value="object-top">top — зверху</option>
@@ -120,7 +131,7 @@ function renderSwimageHTML(src, ind) {
   let inner = '';
 
   const swId    = src.querySelector('.sw-id')?.value?.trim()    || '';
-  const url     = src.querySelector('.img-url')?.value?.trim()  || '';
+  const url     = safeUrl(src.querySelector('.img-url')?.value, { allowDataImage: true });
   const alt     = src.querySelector('.img-alt')?.value?.trim()  || '';
   const wMob    = src.querySelector('.img-w-mob')?.value        ?? 'max-w-full h-auto w-full';
   const wDsk    = src.querySelector('.img-w-dsk')?.value        ?? 'md:max-w-full md:h-auto md:w-full';

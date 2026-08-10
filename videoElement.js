@@ -14,10 +14,17 @@
    - renderVideoHTML(...)  — генерація фінального HTML для експорту
        (викликається з core.js → blockToHTML() для type === 'video').
        Розрізняє два випадки:
-         а) пряме посилання на файл (.mp4/.webm/.ogv) → <video>
+         а) пряме посилання на файл (.mp4/.webm/.ogv) → <video>,
+            з MIME-типом source, який відповідає реальному
+            розширенню файлу
          б) YouTube/Vimeo → <iframe> з embed-URL і параметрами
 
    Підпис під відео рендериться через textLinesToHTML() з core.js.
+   URL відео проходить через safeUrl() (core.js) — приймається лише
+   http(s), щоб непризначені схеми (напр. javascript:) не потрапили
+   в src атрибут iframe/video.
+
+   Усі поля без inline onclick/oninput — керування через delegate.js.
 ═══════════════════════════════════════════════ */
 
 /* ─── Fields (панель налаштувань) ────────────── */
@@ -27,13 +34,13 @@ function buildVideoFields(bid) {
       <div class="sp-group-title">Відео</div>
       <div class="form-field">
         <label class="form-label">URL відео</label>
-        <input class="fi vid-url" type="url" placeholder="YouTube, Vimeo або .mp4" oninput="refreshCode()">
+        <input class="fi vid-url" type="url" placeholder="YouTube, Vimeo або .mp4">
         <div style="font-size:11px;color:var(--t4);margin-top:4px;line-height:1.5;">Підтримується YouTube, Vimeo та прямі .mp4 / .webm посилання</div>
       </div>
       <div class="f2">
         <div class="form-field">
           <label class="form-label">Пропорції</label>
-          <select class="fsel vid-ratio" oninput="refreshCode()">
+          <select class="fsel vid-ratio">
             <option value="aspect-video">16:9 (горизонт.)</option>
             <option value="aspect-square">1:1 (квадрат)</option>
             <option value="aspect-[4/3]">4:3 (класика)</option>
@@ -43,7 +50,7 @@ function buildVideoFields(bid) {
         </div>
         <div class="form-field">
           <label class="form-label">Кути</label>
-          <select class="fsel vid-radius" oninput="refreshCode()">
+          <select class="fsel vid-radius">
             <option value="">Прямі</option>
             <option value="rounded-lg">Середні</option>
             <option value="rounded-xl">Великі</option>
@@ -55,27 +62,27 @@ function buildVideoFields(bid) {
     <div class="sp-group">
       <div class="sp-group-title">Параметри відтворення</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;">
-        <label class="toggle-row" onclick="tToggle(this)">
+        <label class="toggle-row" data-action="toggle">
           <input type="checkbox" class="toggle-input vc-ctrl" checked>
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">Панель керування</span>
         </label>
-        <label class="toggle-row" onclick="tToggle(this)">
+        <label class="toggle-row" data-action="toggle">
           <input type="checkbox" class="toggle-input vc-auto">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">Автозапуск</span>
         </label>
-        <label class="toggle-row" onclick="tToggle(this)">
+        <label class="toggle-row" data-action="toggle">
           <input type="checkbox" class="toggle-input vc-mute" checked>
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">Без звуку (muted)</span>
         </label>
-        <label class="toggle-row" onclick="tToggle(this)">
+        <label class="toggle-row" data-action="toggle">
           <input type="checkbox" class="toggle-input vc-loop">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">Повтор (loop)</span>
         </label>
-        <label class="toggle-row" onclick="tToggle(this)">
+        <label class="toggle-row" data-action="toggle">
           <input type="checkbox" class="toggle-input vc-fs" checked>
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">Повноекранний</span>
@@ -85,11 +92,11 @@ function buildVideoFields(bid) {
     <div class="sp-group">
       <div class="sp-section-head">
         <span class="sp-section-name">📎 Підпис під відео</span>
-        <button class="sp-toggle-btn" onclick="spToggle(this)">Показати</button>
+        <button class="sp-toggle-btn" data-action="sp-toggle">Показати</button>
       </div>
       <div class="hidden">
         <div class="tl-list vid-cap-list"></div>
-        <button class="add-item-btn" onclick="addTextLine(this, ${bid})">+ Додати підпис</button>
+        <button class="add-item-btn" data-action="add-text-line" data-bid="${bid}">+ Додати підпис</button>
       </div>
     </div>`;
 }
@@ -109,7 +116,7 @@ function toEmbedUrl(url) {
 function renderVideoHTML(src, bid, ind) {
   let inner = '';
 
-  const url    = src.querySelector('.vid-url')?.value?.trim() || '';
+  const url    = safeUrl(src.querySelector('.vid-url')?.value);
   const ratio  = src.querySelector('.vid-ratio')?.value  || 'aspect-video';
   const radius = src.querySelector('.vid-radius')?.value || '';
 
@@ -123,7 +130,10 @@ function renderVideoHTML(src, bid, ind) {
   if (url) {
     const wrapCls = [ratio, 'w-full overflow-hidden', radius].filter(Boolean).join(' ');
 
-    if (/\.(mp4|webm|ogv)(\?.*)?$/i.test(url)) {
+    const fileMatch = url.match(/\.(mp4|webm|ogv)(\?.*)?$/i);
+    if (fileMatch) {
+      const mimeByExt = { mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg' };
+      const mime = mimeByExt[fileMatch[1].toLowerCase()] || 'video/mp4';
       const attrs = [
         auto ? 'autoplay' : '', loop ? 'loop' : '',
         mute ? 'muted' : '', ctrl ? 'controls' : '',
@@ -131,7 +141,7 @@ function renderVideoHTML(src, bid, ind) {
       ].filter(Boolean).join(' ');
       inner += `${ind}<div class="${wrapCls}">\n`;
       inner += `${ind}  <video class="w-full h-full object-cover" ${attrs}>\n`;
-      inner += `${ind}    <source src="${esc(url)}" type="video/mp4">\n`;
+      inner += `${ind}    <source src="${esc(url)}" type="${mime}">\n`;
       inner += `${ind}  </video>\n${ind}</div>\n`;
     } else {
       const embed = toEmbedUrl(url);

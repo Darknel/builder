@@ -4,8 +4,9 @@
    Все, що стосується блоку зображення, зібрано тут:
 
    - buildImageFields(bid) — панель налаштувань у sidebar:
-       URL, alt, ширина, вирівнювання, кути, тінь, object-fit,
-       підпис під зображенням, текст поверх зображення (overlay)
+       URL (або завантаження файлу), alt, ширина, вирівнювання,
+       кути, тінь, object-fit, підпис під зображенням, текст
+       поверх зображення (overlay)
 
    - renderImageHTML(...)  — генерація фінального HTML для експорту
        (викликається з core.js → blockToHTML() для type === 'image').
@@ -16,6 +17,12 @@
 
    Підпис/оверлей-текст рендериться через textLinesToHTML()
    з core.js — та сама функція, що й для блоку "Текст".
+
+   URL зображення проходить через safeUrl() (core.js) — приймаються
+   лише http(s) та (для завантажених файлів) data:image/* —
+   довільні схеми (напр. javascript:) відкидаються.
+
+   Усі поля без inline onclick/oninput — керування через delegate.js.
 ═══════════════════════════════════════════════ */
 
 /* ─── Fields (панель налаштувань) ────────────── */
@@ -25,11 +32,17 @@ function buildImageFields(bid) {
       <div class="sp-group-title">Зображення</div>
       <div class="form-field">
         <label class="form-label">URL зображення</label>
-        <input class="fi img-url" type="url" placeholder="https://…/photo.jpg" oninput="refreshCode()">
+        <input class="fi img-url" type="url" placeholder="https://…/photo.jpg">
+      </div>
+      <div class="form-field">
+        <label class="img-dropzone">
+          📁 Перетягніть файл сюди або натисніть, щоб обрати
+          <input type="file" accept="image/*" data-action="img-file-change">
+        </label>
       </div>
       <div class="form-field">
         <label class="form-label">Alt-текст (SEO)</label>
-        <input class="fi img-alt" placeholder="Опис зображення" oninput="refreshCode()">
+        <input class="fi img-alt" placeholder="Опис зображення">
       </div>
     </div>
     <div class="sp-group">
@@ -37,7 +50,7 @@ function buildImageFields(bid) {
       <div class="f2">
         <div class="form-field mob-only">
           <label class="form-label">📱 Ширина</label>
-          <select class="fsel img-w-mob" oninput="refreshCode()">
+          <select class="fsel img-w-mob">
             <option value="max-w-full h-auto w-full">На всю ширину</option>
             <option value="">Оригінальний розмір (1:1)</option>
             <option value="max-w-full h-auto w-auto">Авто</option>
@@ -48,7 +61,7 @@ function buildImageFields(bid) {
         </div>
         <div class="form-field dsk-only">
           <label class="form-label">🖥 Ширина</label>
-          <select class="fsel img-w-dsk" oninput="refreshCode()">
+          <select class="fsel img-w-dsk">
             <option value="md:max-w-full md:h-auto md:w-full">На всю ширину</option>
             <option value="md:max-w-none md:h-auto md:w-auto">Оригінальний розмір (1:1)</option>
             <option value="md:max-w-full md:h-auto md:w-auto">Авто</option>
@@ -59,7 +72,7 @@ function buildImageFields(bid) {
         </div>
         <div class="form-field mob-only">
           <label class="form-label">📱 Вирівнювання</label>
-          <select class="fsel img-align-mob" oninput="refreshCode()">
+          <select class="fsel img-align-mob">
             <option value="mr-auto">Ліво</option>
             <option value="mx-auto">По центру</option>
             <option value="ml-auto">Право</option>
@@ -67,7 +80,7 @@ function buildImageFields(bid) {
         </div>
         <div class="form-field dsk-only">
           <label class="form-label">🖥 Вирівнювання</label>
-          <select class="fsel img-align-dsk" oninput="refreshCode()">
+          <select class="fsel img-align-dsk">
             <option value="md:mr-auto md:ml-0">Ліво</option>
             <option value="md:mx-auto">По центру</option>
             <option value="md:ml-auto md:mr-0">Право</option>
@@ -78,7 +91,7 @@ function buildImageFields(bid) {
       <div class="f2">
         <div class="form-field">
           <label class="form-label">Кути</label>
-          <select class="fsel img-radius" oninput="refreshCode()">
+          <select class="fsel img-radius">
             <option value="">Прямі</option>
             <option value="rounded">Слабкі</option>
             <option value="rounded-lg">Середні</option>
@@ -89,7 +102,7 @@ function buildImageFields(bid) {
         </div>
         <div class="form-field">
           <label class="form-label">Тінь</label>
-          <select class="fsel img-shadow" oninput="refreshCode()">
+          <select class="fsel img-shadow">
             <option value="">Без</option>
             <option value="shadow-sm">Легка</option>
             <option value="shadow">Нормальна</option>
@@ -101,7 +114,7 @@ function buildImageFields(bid) {
       </div>
       <div class="form-field">
         <label class="form-label">Підгонка (object-fit)</label>
-        <select class="fsel img-fit" oninput="refreshCode()">
+        <select class="fsel img-fit">
           <option value="object-cover">cover — заповнити</option>
           <option value="object-contain">contain — вмістити</option>
           <option value="object-top">top — зверху</option>
@@ -112,23 +125,23 @@ function buildImageFields(bid) {
     <div class="sp-group">
       <div class="sp-section-head">
         <span class="sp-section-name">📎 Підпис під зображенням</span>
-        <button class="sp-toggle-btn" onclick="spToggle(this)">Показати</button>
+        <button class="sp-toggle-btn" data-action="sp-toggle">Показати</button>
       </div>
       <div class="hidden">
         <div class="tl-list img-cap-list"></div>
-        <button class="add-item-btn" onclick="addTextLine(this, ${bid})">+ Додати підпис</button>
+        <button class="add-item-btn" data-action="add-text-line" data-bid="${bid}">+ Додати підпис</button>
       </div>
     </div>
     <div class="sp-group">
       <div class="sp-section-head">
         <span class="sp-section-name">✍️ Текст поверх зображення</span>
-        <button class="sp-toggle-btn" onclick="spToggle(this)">Показати</button>
+        <button class="sp-toggle-btn" data-action="sp-toggle">Показати</button>
       </div>
       <div class="hidden">
         <div class="f2" style="margin-bottom:8px;">
           <div class="form-field">
             <label class="form-label">Висота блоку</label>
-            <select class="fsel img-ov-h" oninput="refreshCode()">
+            <select class="fsel img-ov-h">
               <option value="h-auto" selected>Оригінальний розмір (за фото)</option>
               <option value="h-24">Мала (96px)</option>
               <option value="h-40">Середня (160px)</option>
@@ -139,7 +152,7 @@ function buildImageFields(bid) {
           </div>
           <div class="form-field">
             <label class="form-label">Позиція тексту</label>
-            <select class="fsel img-ov-pos" oninput="refreshCode()">
+            <select class="fsel img-ov-pos">
               <option value="items-start justify-start">Зверху</option>
               <option value="items-center justify-center" selected>По центру</option>
               <option value="items-end justify-end">Знизу</option>
@@ -148,7 +161,7 @@ function buildImageFields(bid) {
         </div>
         <div class="form-field" style="margin-bottom:8px;">
           <label class="form-label">Накладання</label>
-          <select class="fsel img-overlay" oninput="refreshCode()">
+          <select class="fsel img-overlay">
             <option value="bg-black/0">Прозоре</option>
             <option value="bg-black/20">Легке (20%)</option>
             <option value="bg-black/40" selected>Середнє (40%)</option>
@@ -160,7 +173,7 @@ function buildImageFields(bid) {
         </div>
         <div class="form-field mob-only">
           <label class="form-label">📱 Внутр. відступ</label>
-          <select class="fsel img-ov-pad-mob" oninput="refreshCode()">
+          <select class="fsel img-ov-pad-mob">
             ${Array.from({length:21}, (_, i) => i * 5).map(pct =>
               `<option value="p-[${pct}%]"${pct === 5 ? ' selected' : ''}>${pct}%</option>`
             ).join('')}
@@ -168,14 +181,14 @@ function buildImageFields(bid) {
         </div>
         <div class="form-field dsk-only">
           <label class="form-label">🖥 Внутр. відступ</label>
-          <select class="fsel img-ov-pad-dsk" oninput="refreshCode()">
+          <select class="fsel img-ov-pad-dsk">
             ${Array.from({length:21}, (_, i) => i * 5).map(pct =>
               `<option value="p-[${pct}%]"${pct === 5 ? ' selected' : ''}>${pct}%</option>`
             ).join('')}
           </select>
         </div>
         <div class="tl-list img-ov-list"></div>
-        <button class="add-item-btn" onclick="addTextLine(this, ${bid})">+ Додати рядок тексту на фото</button>
+        <button class="add-item-btn" data-action="add-text-line" data-bid="${bid}">+ Додати рядок тексту на фото</button>
       </div>
     </div>`;
 }
@@ -185,7 +198,7 @@ function buildImageFields(bid) {
 function renderImageHTML(src, bid, ind) {
   let inner = '';
 
-  const url     = src.querySelector('.img-url')?.value?.trim()  || '';
+  const url     = safeUrl(src.querySelector('.img-url')?.value, { allowDataImage: true });
   const alt     = src.querySelector('.img-alt')?.value?.trim()  || '';
   const wMob    = src.querySelector('.img-w-mob')?.value        ?? 'max-w-full h-auto w-full';
   const wDsk    = src.querySelector('.img-w-dsk')?.value        ?? 'md:max-w-full md:h-auto md:w-full';

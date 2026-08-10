@@ -20,12 +20,14 @@
        type === 'switcher'). Сама логіка перемикання (клік по
        кнопці → зміна класів і показ потрібного зображення)
        виконується в браузері через SWITCHER_RUNTIME_JS
-       (визначено у script.js) і вставляється в експортований
+       (визначено у state.js) і вставляється в експортований
        HTML лише якщо в документі є хоч один switcher/swimage.
 
    Тут також живуть дрібні хелпери керування рядком тексту, які
    історично ділять файл з switcher (segToggle і споріднені —
    дивись textElement.js, там вони фактично й використовуються).
+
+   Усі поля без inline onclick/oninput — керування через delegate.js.
 ═══════════════════════════════════════════════ */
 
 /* ─── Fields (панель налаштувань) ────────────── */
@@ -35,18 +37,18 @@ function buildSwitcherFields(bid) {
       <div class="sp-group-title">Перемикач</div>
       <div class="form-field">
         <label class="form-label">Заголовок (необов'язково)</label>
-        <input class="fi sw-title" type="text" placeholder="Напр. Колір" oninput="refreshCode()">
+        <input class="fi sw-title" type="text" placeholder="Напр. Колір">
       </div>
       <div class="form-field">
         <label class="form-label">Стиль кнопок</label>
-        <select class="fsel sw-style" oninput="refreshCode()">
+        <select class="fsel sw-style">
           <option value="list">Список (текст, рамка при виборі)</option>
           <option value="pills">Кнопки-таблетки</option>
         </select>
       </div>
       <div class="form-field mob-only">
         <label class="form-label">📱 Розмір тексту</label>
-        <select class="fsel sw-fsz-mob" oninput="refreshCode()">
+        <select class="fsel sw-fsz-mob">
           <option value="text-xs">12px</option>
           <option value="text-sm" selected>14px</option>
           <option value="text-base">16px</option>
@@ -57,7 +59,7 @@ function buildSwitcherFields(bid) {
       </div>
       <div class="form-field dsk-only">
         <label class="form-label">🖥 Розмір тексту</label>
-        <select class="fsel sw-fsz-dsk" oninput="refreshCode()">
+        <select class="fsel sw-fsz-dsk">
           <option value="text-xs">12px</option>
           <option value="text-sm" selected>14px</option>
           <option value="text-base">16px</option>
@@ -72,7 +74,7 @@ function buildSwitcherFields(bid) {
       <div class="f2">
         <div class="form-field">
           <label class="form-label">Товщина (неактивна)</label>
-          <select class="fsel sw-bw-off" oninput="refreshCode()">
+          <select class="fsel sw-bw-off">
             <option value="border-0">0px</option>
             <option value="border" selected>1px</option>
             <option value="border-2">2px</option>
@@ -82,7 +84,7 @@ function buildSwitcherFields(bid) {
         </div>
         <div class="form-field">
           <label class="form-label">Товщина (активна)</label>
-          <select class="fsel sw-bw-on" oninput="refreshCode()">
+          <select class="fsel sw-bw-on">
             <option value="border-0">0px</option>
             <option value="border">1px</option>
             <option value="border-2" selected>2px</option>
@@ -95,21 +97,21 @@ function buildSwitcherFields(bid) {
         <div class="form-field">
           <label class="form-label">Колір (неактивна)</label>
           <div class="color-row">
-            <input type="color" class="color-swatch sw-bc-off-swatch" value="#d1d5db" oninput="swColorSync(this,'sw-bc-off-hex')">
-            <input type="text" class="fi color-hex sw-bc-off-hex" value="#d1d5db" oninput="swColorSync(this,'sw-bc-off-swatch')" style="flex:1;">
+            <input type="color" class="color-swatch sw-bc-off-swatch" value="#d1d5db" data-action="color-sync" data-target-class="sw-bc-off-hex">
+            <input type="text" class="fi color-hex sw-bc-off-hex" value="#d1d5db" data-action="color-sync" data-target-class="sw-bc-off-swatch" style="flex:1;">
           </div>
         </div>
         <div class="form-field">
           <label class="form-label">Колір (активна)</label>
           <div class="color-row">
-            <input type="color" class="color-swatch sw-bc-on-swatch" value="#111827" oninput="swColorSync(this,'sw-bc-on-hex')">
-            <input type="text" class="fi color-hex sw-bc-on-hex" value="#111827" oninput="swColorSync(this,'sw-bc-on-swatch')" style="flex:1;">
+            <input type="color" class="color-swatch sw-bc-on-swatch" value="#111827" data-action="color-sync" data-target-class="sw-bc-on-hex">
+            <input type="text" class="fi color-hex sw-bc-on-hex" value="#111827" data-action="color-sync" data-target-class="sw-bc-on-swatch" style="flex:1;">
           </div>
         </div>
       </div>
       <div class="form-field" style="margin-top:8px;">
         <label class="form-label">Радіус кутів</label>
-        <select class="fsel sw-radius" oninput="refreshCode()">
+        <select class="fsel sw-radius">
           <option value="rounded-none">Прямі</option>
           <option value="rounded" selected>Слабкі</option>
           <option value="rounded-md">Середні</option>
@@ -122,15 +124,15 @@ function buildSwitcherFields(bid) {
     <div class="sp-group">
       <div class="sp-group-title">Анімація зображень</div>
       <div class="form-field">
-        <label class="toggle-row" onclick="tToggleClick(this)">
-          <input type="checkbox" class="toggle-input sw-fade-on" checked oninput="refreshCode()">
+        <label class="toggle-row" data-action="toggle-refresh">
+          <input type="checkbox" class="toggle-input sw-fade-on" checked>
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">Плавний crossfade між зображеннями</span>
         </label>
       </div>
       <div class="form-field" style="margin-top:8px;">
         <label class="form-label">Тривалість переходу</label>
-        <select class="fsel sw-fade-dur" oninput="refreshCode()">
+        <select class="fsel sw-fade-dur">
           <option value="150">150 мс (швидко)</option>
           <option value="300">300 мс</option>
           <option value="500" selected>500 мс (рекомендовано)</option>
@@ -142,7 +144,7 @@ function buildSwitcherFields(bid) {
     <div class="sp-group">
       <div class="sp-group-title">Варіанти</div>
       <div class="sw-list">${makeSwitcherItem(bid, true)}</div>
-      <button class="add-item-btn" onclick="addSwitcherItem(this, ${bid})">+ Додати варіант</button>
+      <button class="add-item-btn" data-action="add-sw-item" data-bid="${bid}">+ Додати варіант</button>
     </div>`;
 }
 
@@ -162,19 +164,19 @@ function tToggleClick(label) {
 function makeSwitcherItem(bid, isFirst) {
   return `<div class="text-line-item sw-item">
     <div class="tli-row flex-end">
-      <button class="ib danger bg-red-800 hover:bg-red-300 text-white" style="flex:1;flex-shrink:0;font-size:12px;font-weight:700;" onclick="this.closest('.sw-item').remove();refreshCode()">✕ Видалити варіант</button>
+      <button class="ib danger bg-red-800 hover:bg-red-300 text-white" style="flex:1;flex-shrink:0;font-size:12px;font-weight:700;" data-action="sw-remove">✕ Видалити варіант</button>
     </div>
     <div class="form-field">
       <label class="form-label">Текст кнопки</label>
-      <input class="fi sw-label" type="text" placeholder="Напр. Синій" oninput="refreshCode()">
+      <input class="fi sw-label" type="text" placeholder="Напр. Синій">
     </div>
     <div class="form-field" style="margin-top:8px;">
       <label class="form-label">ID зображення-цілі</label>
-      <input class="fi sw-target" type="text" placeholder="Напр. img-blue" oninput="refreshCode()">
+      <input class="fi sw-target" type="text" placeholder="Напр. img-blue">
       <div style="font-size:11px;color:var(--t4);margin-top:4px;line-height:1.5;">Впишіть той самий ID, що й у полі «ID для перемикача» в блоці зображення</div>
     </div>
     <div class="form-field" style="margin-top:8px;">
-      <label class="toggle-row" onclick="setSwActive(this)">
+      <label class="toggle-row" data-action="sw-set-active">
         <input type="checkbox" class="toggle-input sw-active"${isFirst ? ' checked' : ''}>
         <span class="toggle-track"><span class="toggle-thumb"></span></span>
         <span class="toggle-label">Активний за замовчуванням</span>
@@ -183,22 +185,13 @@ function makeSwitcherItem(bid, isFirst) {
   </div>`;
 }
 
-function addSwitcherItem(btnOrId, bid) {
-  let list;
-  if (typeof btnOrId === 'string') {
-    list = document.getElementById(btnOrId);
-  } else {
-    list = btnOrId.closest('.sp-group, .block-fields')?.querySelector('.sw-list')
-        || btnOrId.previousElementSibling;
-  }
+function addSwitcherItem(btn, bid) {
+  const list = btn.closest('.sp-group, .block-fields')?.querySelector('.sw-list')
+      || btn.previousElementSibling;
   if (!list) return;
   const div = document.createElement('div');
   div.innerHTML = makeSwitcherItem(bid, false);
   const node = div.firstElementChild;
-  node.querySelectorAll('input, textarea, select').forEach(el => {
-    el.addEventListener('input',  refreshCode);
-    el.addEventListener('change', refreshCode);
-  });
   list.appendChild(node);
   refreshCode();
 }

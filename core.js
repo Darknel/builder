@@ -43,7 +43,72 @@
 ═══════════════════════════════════════════════ */
 
 function esc(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* ─── Helper: debounce ───────────────────────── */
+// Затримує виклик fn, поки викликається повторно — виконується лише
+// після того, як минуло `wait` мс без нових викликів.
+function debounce(fn, wait) {
+  let t;
+  return function debounced(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+/* ─── Helper: safe URL ───────────────────────────
+   Пропускає лише http(s) та (опційно, для завантажених файлів)
+   data:image/* — усе інше (javascript:, vbscript:, невідомі
+   схеми) відкидається, щоб URL-поля (зображення/відео/фон) не
+   могли перетворитися на вектор виконання коду в експортованому
+   HTML чи в preview iframe. */
+function isSafeUrl(url, opts) {
+  const allowDataImage = !!(opts && opts.allowDataImage);
+  const s = (url || '').trim();
+  if (!s) return true; // порожнє значення — просто нічого не рендеримо, не помилка
+  if (allowDataImage && /^data:image\/[a-z0-9.+-]+;base64,/i.test(s)) return true;
+  return /^https?:\/\//i.test(s);
+}
+function safeUrl(url, opts) {
+  const s = (url || '').trim();
+  return isSafeUrl(s, opts) ? s : '';
+}
+
+/* ─── Image upload: файл/drag&drop → data URL ──
+   Спільна логіка для полів "Зображення"/"Зображення (перемикача)"
+   і для фонового зображення рядка — різниця лише в тому, куди
+   записати результат (окремі виклики нижче). */
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB — обмеження, бо файл лягає в HTML як base64
+function loadImageFileAsDataUrl(file, onDone) {
+  if (!file) return;
+  if (!file.type || !file.type.startsWith('image/')) { showToast('Оберіть файл зображення', 'error'); return; }
+  if (file.size > MAX_UPLOAD_BYTES) { showToast('Файл завеликий (макс. 5MB)', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = () => onDone(reader.result);
+  reader.onerror = () => showToast('Не вдалося прочитати файл', 'error');
+  reader.readAsDataURL(file);
+}
+
+// Для полів "URL зображення" всередині панелі блоку (.img-url)
+function handleImageBlockFile(dropzoneEl, file) {
+  const urlInput = dropzoneEl.closest('.sp-group, .block-fields')?.querySelector('.img-url');
+  if (!urlInput) return;
+  loadImageFileAsDataUrl(file, dataUrl => {
+    urlInput.value = dataUrl;
+    refreshCode();
+    showToast('✓ Зображення завантажено');
+  });
+}
+
+// Для фонового зображення рядка (#row-bg-img, керується через dataset рядка)
+function handleRowBgFile(file) {
+  loadImageFileAsDataUrl(file, dataUrl => {
+    const input = document.getElementById('row-bg-img');
+    if (input) input.value = dataUrl;
+    setRowBgImage(dataUrl);
+    showToast('✓ Зображення завантажено');
+  });
 }
 
 /* ─── Helper: get block fields source ────────── */
@@ -194,7 +259,7 @@ function buildPadBar(bid) {
       <div class="f2">
         <div class="form-field">
           <label class="form-label">↔ По горизонталі</label>
-          <select class="fsel cb-px" oninput="refreshCode()">
+          <select class="fsel cb-px">
             <option value="" selected>Без</option>
             <option value="px-1">4px</option>
             <option value="px-2">8px</option>
@@ -207,7 +272,7 @@ function buildPadBar(bid) {
         </div>
         <div class="form-field">
           <label class="form-label">↕ По вертикалі</label>
-          <select class="fsel cb-py" oninput="refreshCode()">
+          <select class="fsel cb-py">
             <option value="" selected>Без</option>
             <option value="py-1">4px</option>
             <option value="py-2">8px</option>

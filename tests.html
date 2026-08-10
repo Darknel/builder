@@ -390,6 +390,26 @@
     assertIncludes(colDivs[1], 'md:order-1', 'колонка зображення (друга в DOM) мала отримати md:order-1, щоб піти на десктопі першою (зліва)');
   });
 
+  /* ─── Регресія: "зліва" і "справа" мали виглядати однаково В РЕДАКТОРІ,
+     бо .row-cols — звичайний flex і не знає про Tailwind order-класи.
+     setColOrder() тепер дублює порядок як інлайновий CSS order прямо
+     на .col, щоб редактор одразу показував правильний вигляд. ────── */
+  test('Шаблон "Зображення зліва": редактор (.col.style.order) теж показує зображення першим', () => {
+    clearCanvas();
+    buildImageTextRow('left');
+    const [textCol, imgCol] = document.querySelectorAll('#canvas .col');
+    assert(imgCol.style.order === '1', `.col зображення мав мати style.order = "1", отримали "${imgCol.style.order}"`);
+    assert(textCol.style.order === '2', `.col тексту мав мати style.order = "2", отримали "${textCol.style.order}"`);
+  });
+
+  test('Шаблон "Зображення справа": редактор НЕ переставляє колонки (order не виставлено)', () => {
+    clearCanvas();
+    buildImageTextRow('right');
+    const [textCol, imgCol] = document.querySelectorAll('#canvas .col');
+    assert(!textCol.style.order, `.col тексту не мав мати order, отримали "${textCol.style.order}"`);
+    assert(!imgCol.style.order, `.col зображення не мав мати order, отримали "${imgCol.style.order}"`);
+  });
+
   test('Шаблон "Зображення справа": DOM-порядок вже відповідає бажаному, без order-класів', () => {
     clearCanvas();
     buildImageTextRow('right');

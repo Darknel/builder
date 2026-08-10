@@ -68,11 +68,15 @@ function buildImageTextRow(imageSide) {
   const [textCol, imgCol] = rw.querySelectorAll('.col');
 
   if (imageSide === 'left') {
-    imgCol.dataset.orderDsk  = 'md:order-1';
-    textCol.dataset.orderDsk = 'md:order-2';
+    // setColOrder (rowSystem.js) виставляє і Tailwind-клас для експорту,
+    // і інлайновий CSS order прямо на .col — щоб редактор одразу
+    // показував зображення зліва, а не лише експортований код.
+    setColOrder(imgCol, 1);
+    setColOrder(textCol, 2);
   }
   // imageSide === 'right' — DOM-порядок (текст, зображення) вже і так
-  // дає "текст зліва / зображення справа" на десктопі, order не потрібен.
+  // дає "текст зліва / зображення справа" і в редакторі, і на десктопі
+  // в експорті — order не потрібен.
 
   const title = addBlockSilently('text', textCol);
   addTemplateTextLine(title, '.tl-list', 'Заголовок', { tag: 'h3' });

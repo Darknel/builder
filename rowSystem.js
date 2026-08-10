@@ -28,6 +28,27 @@ function openRowSP(rw) {
   document.getElementById('settings-panel').classList.add('is-open');
 }
 
+/* ─── Візуальний порядок колонки ──────────────────
+   generateHTML.js читає col.dataset.orderDsk/orderMob, щоб
+   переставити колонки на десктопі в експортованому HTML (напр.
+   "зображення зліва" при DOM-порядку текст→зображення). Але сам
+   редактор (#canvas) — це проста flexbox-розкладка (.row-cols),
+   яка НІЯК не знає про ці Tailwind-класи й завжди показує колонки
+   в DOM-порядку. Без цієї функції "Зображення зліва" й "Зображення
+   справа" виглядали б в редакторі ідентично (обидва — текст, потім
+   зображення), хоч експортований код і відрізнявся б правильно.
+   Тому дублюємо порядок як інлайновий CSS order прямо на .col —
+   так редактор одразу показує той вигляд, який буде на десктопі. */
+function setColOrder(col, order) {
+  if (order) {
+    col.dataset.orderDsk = `md:order-${order}`;
+    col.style.order = String(order);
+  } else {
+    delete col.dataset.orderDsk;
+    col.style.order = '';
+  }
+}
+
 /* ═══════════════════════════════════════════════
    ROW SYSTEM
 ═══════════════════════════════════════════════ */
